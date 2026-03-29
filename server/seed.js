@@ -7,6 +7,10 @@ import User from './models/User.js';
 import Restaurant from './models/Restaurant.js';
 import Dish from './models/Dish.js';
 import Review from './models/Review.js';
+import Post from './models/Post.js';
+import Comment from './models/Comment.js';
+import Vote from './models/Vote.js';
+import Report from './models/Report.js';
 
 const hash = (pw) => bcryptjs.hash(pw, 10);
 
@@ -28,7 +32,7 @@ async function seed() {
   console.log('Connected to MongoDB');
 
   // ── Drop all collections ──────────────────────────────────────────────────
-  const collections = ['users','restaurants','dishes','reviews'];
+  const collections = ['users','restaurants','dishes','reviews','posts','comments','votes','reports'];
   for (const col of collections) {
     try { await mongoose.connection.dropCollection(col); } catch { /* didn't exist */ }
   }
@@ -760,48 +764,386 @@ async function seed() {
   }
   console.log('Running totals recalculated');
 
+  // ── Forum Posts ───────────────────────────────────────────────────────────
+  const CATS = {
+    BEST:   'Best in City',
+    HIDDEN: 'Hidden Gems',
+    BAD:    'Bad Experiences',
+    ASK:    'Ask the Community',
+    DEALS:  'Deals and Offers',
+    HOOD:   'Neighbourhood Eats'
+  };
+
+  const [p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20] = await Post.insertMany([
+    // ── Best in City ──────────────────────────────────────────────────────────
+    { userId:jasim._id, title:'My definitive ranking of Kacchi Biriyani in Dhaka after visiting 12 restaurants — Star Kacchi House is still number one and here is why',
+      content:"I have been eating biriyani across Dhaka for the last two years and keeping notes. Visited 12 places total. Star Kacchi House on Road 7 Dhanmondi wins by a clear margin. The meat to rice ratio is better than anywhere else I tried. The spice blend is consistent — I have been four times and it tastes the same every visit which tells you the kitchen is disciplined. Second place for me is Fakruddin but their portions have gotten smaller. Third is the tehari at Puran Dhaka Bhojon which is a different category but deserves a mention. Everything else in the city is either overpriced or inconsistent. If you disagree, tell me where and I will go try it. I am not closed to being wrong.",
+      category:CATS.BEST, likeCount:12, commentsCount:8, linkedRestaurantId:r1._id, linkedDishId:d('Kacchi Biriyani (Beef)')?._id, tags:['biriyani','ranking','star kacchi'] },
+    { userId:rina._id, title:'Gulshan vs Dhanmondi for a proper dinner out — where is the better value for money right now',
+      content:"I have been tracking this for a while because my husband and I eat out once a week and we rotate areas. Gulshan has better ambience without question. Gulshan Grill and Co specifically is one of the best dining experiences in the city if you want to feel like you are somewhere special. But value is a different conversation. For the same spend in Dhanmondi you get more food and honestly sometimes better food. The Kacchi at Star Kacchi House costs a fraction of what you pay at a Gulshan restaurant and the taste rating on this platform reflects that — taste scores in Dhanmondi are consistently higher than ambience scores in Gulshan. I think Gulshan wins for dates and special occasions. Dhanmondi wins for actual food quality per taka spent.",
+      category:CATS.BEST, likeCount:10, commentsCount:5, linkedRestaurantId:r2._id, tags:['gulshan','dhanmondi','value','fine dining'] },
+    { userId:farhan._id, title:'Old Dhaka food tour guide — go here in this order and thank me later',
+      content:"I spent a Saturday doing a proper Old Dhaka food tour. No bookings, just showed up. Started at Puran Dhaka Bhojon at 7am for fresh bakarkhani and tea. The bakarkhani straight from the tawa with a glass of thick tea is a complete experience. By 10am walked to a nearby halwa shop. Lunch at Puran Dhaka Bhojon again for the mutton tehari — huge portions, extremely cheap. The tehari here is a different product from Dhanmondi biriyani. Less rich, more spiced, served fast. Afternoon walked around Chawkbazar market. Ended with firni from a roadside stall. Total spend for the entire day was under 700 BDT. I am critical of many restaurants but Old Dhaka is the one area where I have no complaints. The food is honest.",
+      category:CATS.BEST, likeCount:13, commentsCount:6, linkedRestaurantId:r3._id, linkedDishId:d('Mutton Tehari')?._id, tags:['old dhaka','food tour','guide','puran dhaka'] },
+    { userId:nadia._id, title:'Honest review of Dhaka\'s Japanese options — is Sakura Japanese Kitchen actually authentic or is it just the aesthetic',
+      content:"I lived abroad for two years and ate a lot of real Japanese food. When I came back I was excited to try Sakura Japanese Kitchen in Banani. My verdict: it is the most authentic Japanese experience available in Dhaka right now, which is a low bar but they clear it by more than expected. The tonkotsu ramen broth is genuinely good — rich, fatty, properly seasoned. The salmon sashimi was fresh which is the most important thing and the hardest thing to guarantee in Dhaka. The dragon roll was slightly over-sauced which is a very common thing outside Japan. The miso soup was excellent. Matcha ice cream was a bit sweet but enjoyable. The main complaint is price — 980 BDT for 6 pieces of sashimi is a lot even by international standards. But if you want Japanese food in Dhaka this is your best option right now.",
+      category:CATS.BEST, likeCount:8, commentsCount:4, linkedRestaurantId:r4._id, linkedDishId:d('Tonkotsu Ramen')?._id, tags:['japanese','sakura','authentic','comparison'] },
+    // ── Hidden Gems ───────────────────────────────────────────────────────────
+    { userId:ahmed._id, title:'Nobody is talking about the bakarkhani at Puran Dhaka Bhojon and it is a serious problem',
+      content:"I went to Old Dhaka last month for the mutton tehari and almost as an afterthought ordered a bakarkhani because it was 20 BDT. I was not expecting much. It was one of the best bread experiences I have had in Dhaka. Crispy outside, slightly flaky inside, a faint sweetness. Goes perfectly with their beef bhuna or even just on its own with tea. This is a 20 BDT item that could be the star of the menu if it were better marketed. Most people who visit go straight for the tehari and miss it completely. If you have been to Puran Dhaka Bhojon and did not order the bakarkhani, you need to go back specifically for it.",
+      category:CATS.HIDDEN, likeCount:11, commentsCount:5, linkedRestaurantId:r3._id, linkedDishId:d('Bakarkhani')?._id, tags:['puran dhaka','bakarkhani','hidden gem','old dhaka'] },
+    { userId:priya._id, title:'The Healthy Bowl in Uttara is genuinely changing how I think about eating in Dhaka',
+      content:"I was skeptical because clean eating restaurants in Dhaka have a history of being expensive, small portioned, and not actually that healthy when you look at what goes in the food. The Healthy Bowl in Uttara Sector 7 is different. They show calorie counts on every item which nobody in Dhaka does. The Classic Macro Bowl is 480 BDT and fills you completely. The Green Detox Smoothie is actually made from real ingredients — you can see them adding the spinach and cucumber. The Protein Power Bowl has enough protein to actually matter. I eat here three times a week now and I feel different. That sounds like marketing copy but I mean it genuinely. The price is fair for what it is and the hygiene is the cleanest I have seen in any Dhaka restaurant.",
+      category:CATS.HIDDEN, likeCount:8, commentsCount:4, linkedRestaurantId:r7._id, linkedDishId:d('Classic Macro Bowl')?._id, tags:['healthy','uttara','clean eating'] },
+    { userId:kabir._id, title:'Mezban Street Kitchen at 11pm after a long day — nothing else comes close',
+      content:"I know people talk about the fancy restaurants and the proper sit-down places and that is fine. But sometimes after a long day all you want is a chicken shawarma standing on a street in Mirpur. Mezban Street Kitchen on Section 6 Mirpur 10 is open until 1am. The shawarma is 120 BDT for chicken, freshly made, not sitting under a heat lamp. The fuchka is 60 BDT for 8 pieces and they make the filling in front of you. The chotpoti is 80 BDT and the right amount of spicy. This is not a restaurant you go to for ambience. You stand, you eat, you leave. But the food is real and it is made fresh. Late night in Dhaka this is my default and it has not let me down once.",
+      category:CATS.HIDDEN, likeCount:10, commentsCount:5, linkedRestaurantId:r6._id, linkedDishId:d('Chicken Shawarma')?._id, tags:['street food','mirpur','late night','mezban'] },
+    // ── Bad Experiences ───────────────────────────────────────────────────────
+    { userId:mitu._id, title:'Reserved a table, arrived on time, was told to wait 45 minutes — what is the point of reservations',
+      content:"This did not happen at a Food Tabs restaurant so I am not naming the place. But I want to raise the issue generally. I made a reservation through a different platform, arrived exactly on time with two people, and was told the table was not ready and I should wait. 45 minutes later we were seated. No apology, no explanation, no discount. The reservation system exists to prevent exactly this. If restaurants are going to take reservations they need to actually honour them. The reason I now prefer booking through Food Tabs is that the reservation system here actually tracks slot capacity in real time. But I wanted to share this experience because it is a common problem in Dhaka dining and people should know to ask restaurants directly whether their reservation system is actually being managed.",
+      category:CATS.BAD, likeCount:9, commentsCount:6, tags:['reservation','bad experience','booking'] },
+    { userId:sonia._id, title:'Found something in my food at a restaurant — sharing my experience and asking how others handled similar situations',
+      content:"I ordered street food last week and found something in it that should not have been there. I will not go into graphic detail. I am not naming the restaurant yet because I want to handle this properly. My question to the community is — what is the right process here? Do I report directly to the restaurant? Do I report to BSTI? Do I leave a review here? I felt sick afterwards and I am genuinely uncertain what the right steps are. I want other people to be warned but I also want to be fair and give the restaurant a chance to respond first.",
+      category:CATS.BAD, likeCount:0, commentsCount:0, isFlagged:true, isPublished:false, isReported:true, tags:['report','food safety','health'] },
+    { userId:rakib._id, title:'Experienced differential treatment at a restaurant based on appearance — want to know if others have had this',
+      content:"I am going to be vague about the restaurant because I do not want this to become a pile-on without more context. But I went to a relatively upscale place in Gulshan and noticed that the service we received was noticeably different from the service given to a table near us who were dressed more formally. We were in casual clothes. The wait time for our order was significantly longer. The staff interaction was shorter and less attentive. When I asked for the bill it took 15 minutes. The table next to us got none of that. The food was good and I would not downgrade the food rating because of this. But the service rating is affected. Has anyone else experienced this in Dhaka restaurants? Is this worth leaving a review about?",
+      category:CATS.BAD, likeCount:7, commentsCount:5, tags:['service','discrimination','gulshan'] },
+    // ── Ask the Community ─────────────────────────────────────────────────────
+    { userId:priya._id, title:'Best place to take parents for a birthday dinner in Gulshan — budget 5000 BDT for 4 people',
+      content:"My parents are visiting from Chittagong for their anniversary. I want to take them somewhere special in Gulshan that is not too loud, has proper service, and is impressive without being pretentious. 5000 BDT for 4 people. Any suggestions? They eat all cuisine types so that is not a constraint. What matters most to them is atmosphere and attentive service. We had a bad experience at a place last year where the staff ignored us for 20 minutes. Do not want to repeat that.",
+      category:CATS.ASK, likeCount:8, commentsCount:4, tags:['family','gulshan','birthday','recommendation'] },
+    { userId:farhan._id, title:'Is the Omakase at Sakura actually worth 4500 BDT?',
+      content:"I am seriously considering booking the Omakase Evening at Sakura Japanese Kitchen. 4500 taka per person is a significant number. I have read the reviews and they seem positive but I want real opinions from people who have actually done it. Is it genuinely a special experience or is it paying for the novelty of it being called omakase? Does the chef actually narrate each course? Are the portions adequate? And most importantly — is the fish actually fresh enough to justify the price at that format?",
+      category:CATS.ASK, likeCount:8, commentsCount:3, linkedRestaurantId:r4._id, tags:['sakura','omakase','japanese','worth it'] },
+    { userId:ahmed._id, title:'Late night biriyani after 11pm in Dhanmondi — any recommendations?',
+      content:"I know Star Kacchi House closes at 11pm on weekdays. What are the options for a late night biriyani fix in Dhanmondi or nearby? Looking for quality not just availability. I have tried a few places that are open late but the biriyani is clearly from the afternoon batch that has been sitting. I want somewhere that is actually making fresh biriyani at that hour. Mirpur is not too far for me if the quality is there.",
+      category:CATS.ASK, likeCount:9, commentsCount:4, tags:['biriyani','dhanmondi','late night','recommendation'] },
+    { userId:mitu._id, title:'How do I know if a review is real or fake on this platform?',
+      content:"I trust reviews here more than other platforms but I still wonder — how does the platform verify that reviewers actually visited? Is there any filtering for fake reviews? This matters a lot for booking decisions. I have been burned before on other platforms by restaurants with inflated ratings. The verified badge here seems meaningful but I want to understand the full picture. Are unverified reviews still trustworthy? What happens when a fake review is reported?",
+      category:CATS.ASK, likeCount:10, commentsCount:4, tags:['reviews','trust','verification','platform'] },
+    // ── Deals and Offers ──────────────────────────────────────────────────────
+    { userId:kabir._id, title:'Gulshan Grill early bird discount on weekdays — someone told me about this?',
+      content:"A friend mentioned that Gulshan Grill and Co has an early bird deal on weekdays before 7pm. Cannot find this information on their profile. Has anyone confirmed this? Would change my visiting strategy significantly. The ribeye at full price is 1800 BDT which is a lot for a regular Tuesday dinner. If there is a meaningful discount at that hour it changes the whole calculation for me.",
+      category:CATS.DEALS, likeCount:6, commentsCount:3, linkedRestaurantId:r2._id, tags:['gulshan grill','deals','discount','early bird'] },
+    { userId:rina._id, title:'Star Kacchi House doing family pack deals during Eid week',
+      content:"Just confirmed with the staff — Star Kacchi House is offering family packs of 4 and 6 portions at a discounted rate during Eid week. No details yet on the exact pricing but they said announcements coming soon. The family pack last Eid was very good value. If you are planning an Eid dawat this is worth watching. I will update this post when the official pricing drops. They also said the Eid menu will include the Borhani and Firni as part of the pack which was not the case last year.",
+      category:CATS.DEALS, likeCount:9, commentsCount:3, linkedRestaurantId:r1._id, tags:['star kacchi','eid','family pack','deals'] },
+    { userId:jasim._id, title:'Which restaurants have loyalty programs or frequent visitor discounts?',
+      content:"I eat out 4-5 times a week and would love to know which restaurants in Dhaka have any kind of loyalty system. Even a simple stamp card would be something. I spend a significant amount on food every month and it would be nice to get something back from the places I visit regularly. Does anyone know of restaurants on this platform that offer any form of return customer recognition? I am specifically looking for places in Dhanmondi and Gulshan.",
+      category:CATS.DEALS, likeCount:7, commentsCount:4, tags:['loyalty','discount','regular customers','reward'] },
+    // ── Neighbourhood Eats ────────────────────────────────────────────────────
+    { userId:jasim._id, title:'Complete food map of Dhanmondi Road 7 area — everything worth trying in a 10-minute walk',
+      content:"Spent a month systematically eating my way through Road 7 and surrounding streets. Star Kacchi House is the obvious anchor but there are supporting acts worth knowing. There is a fresh juice stall near the lake that is open from 5pm until midnight. There is a small bakery two lanes over that does excellent butter biscuits. There is a Chinese restaurant that seems unremarkable but has exceptional prawn fried rice. The full route takes about 10 minutes to walk and you can eat your way through it in a Saturday afternoon very affordably. Full breakdown below.",
+      category:CATS.HOOD, likeCount:10, commentsCount:4, linkedRestaurantId:r1._id, tags:['dhanmondi','food map','road 7','neighbourhood'] },
+    { userId:nadia._id, title:'Banani vs Gulshan 2 — which neighbourhood has better overall dining options right now?',
+      content:"People argue about this endlessly. I have spent the last two months eating in both areas and have reached a conclusion. The answer is more nuanced than the usual Gulshan-wins take. Gulshan 2 wins on flagship restaurants — you have Gulshan Grill, Bella Napoli, and a handful of other premium options that simply do not exist in Banani. But Banani wins on density of good mid-range options. You can walk 5 minutes in Banani and find 10 decent places. In Gulshan 2 the good places are spread out and you need to know where to go. If I had to pick one area to eat in for a week I would pick Banani for variety and Gulshan 2 for occasion dining.",
+      category:CATS.HOOD, likeCount:9, commentsCount:3, tags:['banani','gulshan','neighbourhood','comparison'] },
+    { userId:kabir._id, title:'Mirpur 10 hidden food spots — a local guide from someone who actually lives here',
+      content:"Born and raised in Mirpur. The food scene here is criminally underrated in Dhaka food discourse. Everyone talks about Gulshan and Dhanmondi. Let me tell you what you are missing. Mezban Street Kitchen is the obvious one now but there are things even locals overlook. There is a rooftop biriyani place on Section 11 that serves until 2am and has the cheapest beef biriyani in the city at 240 BDT. There is a halim shop on Section 2 that has been making the same recipe for 30 years and the consistency is remarkable. The Mirpur market area has a row of fruit stalls that sell fresh seasonal juice for 30 BDT. If you have not eaten in Mirpur you have missed a significant part of the Dhaka food story.",
+      category:CATS.HOOD, likeCount:10, commentsCount:5, linkedRestaurantId:r6._id, tags:['mirpur','hidden gems','local guide','neighbourhood'] },
+  ]);
+  console.log('Forum posts created');
+
+  // ── Comments ──────────────────────────────────────────────────────────────
+  const commentData = [
+    // Post 1 — Kacchi ranking (jasim)
+    { parentId:p1._id, parentType:'Post', userId:ahmed._id,  likeCount:11, content:"Completely agree about the consistency point. I have been three times and it is the same every time. That is rare in Dhaka. The Borhani there is also underrated." },
+    { parentId:p1._id, parentType:'Post', userId:farhan._id, likeCount:-2, content:"I think it is slightly overrated. The biriyani is good but the place smells and the tables are never fully clean. Food quality does not excuse hygiene." },
+    { parentId:p1._id, parentType:'Post', userId:rina._id,   likeCount:10, content:"The hygiene comment is fair. It is not the cleanest place. But the food quality is genuinely exceptional. I take my family there for special occasions specifically because the taste never disappoints." },
+    { parentId:p1._id, parentType:'Post', userId:kabir._id,  likeCount:13, content:"Fakruddin portions getting smaller is very true. Used to be full after one plate now I need two." },
+    { parentId:p1._id, parentType:'Post', userId:mitu._id,   likeCount:5,  content:"Has anyone tried their Morog Polao? I keep seeing it on the menu but always end up ordering the Kacchi." },
+    { parentId:p1._id, parentType:'Post', userId:rakib._id,  likeCount:9,  content:"Saved this post. The ranking is fair. Would add that their Firni is excellent and people sleep on it because they come for the biriyani." },
+    { parentId:p1._id, parentType:'Post', userId:priya._id,  likeCount:4,  content:"I am new to the platform and new to exploring Dhaka food seriously. This post is exactly what I needed. Going to try Star Kacchi House this weekend." },
+    { parentId:p1._id, parentType:'Post', userId:nadia._id,  likeCount:8,  content:"I am more of an Italian food person but my husband is obsessed with biriyani and he ranks Star Kacchi the same way. Brought me once and I will admit the Kacchi was very good even for someone who does not normally eat it." },
+    // Post 2 — Gulshan vs Dhanmondi (rina)
+    { parentId:p2._id, parentType:'Post', userId:ahmed._id,  likeCount:12, content:"This is exactly right. The ribeye at Gulshan Grill is incredible but I would never go there on a regular Tuesday. Star Kacchi is my regular Tuesday." },
+    { parentId:p2._id, parentType:'Post', userId:jasim._id,  likeCount:13, content:"Both areas win for different reasons. Old Dhaka is the real underrated one though. Puran Dhaka Bhojon gives you an experience that neither Gulshan nor Dhanmondi can replicate." },
+    { parentId:p2._id, parentType:'Post', userId:nadia._id,  likeCount:13, content:"For date night Gulshan every time. The ambience at Gulshan Grill is genuinely lovely. My husband proposed to me at a restaurant in Gulshan so I might be biased." },
+    { parentId:p2._id, parentType:'Post', userId:sumaiya._id,likeCount:6,  content:"As the owner of Gulshan Grill I appreciate the kind words about ambience and experience. We work hard on both the food quality and the setting. Our ingredients are premium and that is reflected in the price." },
+    { parentId:p2._id, parentType:'Post', userId:farhan._id, likeCount:6,  content:"Respectfully, 1800 BDT for a steak is a lot for Dhaka regardless of ingredient quality. Context matters." },
+    // Post 3 — Old Dhaka food tour (farhan)
+    { parentId:p3._id, parentType:'Post', userId:jasim._id,  likeCount:13, content:"The 7am bakarkhani move is correct. You have to go early before they run out. The afternoon batch is not the same." },
+    { parentId:p3._id, parentType:'Post', userId:tariq._id,  likeCount:13, content:"As the owner of Puran Dhaka Bhojon, reading this made me proud. The bakarkhani recipe has not changed in 40 years. My grandfather started it. Thank you for visiting and for writing this." },
+    { parentId:p3._id, parentType:'Post', userId:ahmed._id,  likeCount:13, content:"Under 700 BDT for a full day of eating in Old Dhaka is honestly remarkable. You cannot get lunch for that in Gulshan." },
+    { parentId:p3._id, parentType:'Post', userId:priya._id,  likeCount:6,  content:"I grew up going to Old Dhaka with my parents but stopped after I moved to Uttara. This post is making me want to go back. Adding it to my list." },
+    { parentId:p3._id, parentType:'Post', userId:mitu._id,   likeCount:3,  content:"Is Puran Dhaka Bhojon okay for someone who does not know Old Dhaka well? I am a bit nervous about navigating Chawkbazar alone." },
+    { parentId:p3._id, parentType:'Post', userId:rina._id,   likeCount:11, content:"The consistency is the remarkable thing. You can feel that the recipe is not being improvised. It tastes like it has been made the same way for a very long time." },
+    // Post 4 — Sakura Japanese (nadia)
+    { parentId:p4._id, parentType:'Post', userId:farhan._id, likeCount:11, content:"The sashimi freshness point is the key thing. I tried a different Japanese place in Dhaka last year and the fish was clearly not fresh. If Sakura is getting that right then it is worth the price." },
+    { parentId:p4._id, parentType:'Post', userId:rakib._id,  likeCount:13, content:"980 BDT for sashimi is hard to justify when I can get a full Kacchi meal for 380. Different experience I know but the value comparison is always in my head." },
+    { parentId:p4._id, parentType:'Post', userId:jasim._id,  likeCount:9,  content:"Went based on this post. The ramen is legitimately good. Broth is rich and the noodles are the right texture. The gyoza was also very good. Will go back." },
+    { parentId:p4._id, parentType:'Post', userId:priya._id,  likeCount:4,  content:"I had Japanese food once abroad and loved it. This is the first Dhaka Japanese place I am actually considering trying. The ramen specifically sounds worth it." },
+    // Post 5 — Bakarkhani (ahmed)
+    { parentId:p5._id, parentType:'Post', userId:tariq._id,  likeCount:13, content:"The bakarkhani is made fresh every morning from 7am. My father used to say the recipe is the soul of the restaurant. Thank you for noticing it. Most people come for the tehari and the bakarkhani is our quiet pride." },
+    { parentId:p5._id, parentType:'Post', userId:rina._id,   likeCount:13, content:"This is exactly the kind of post the community needs. Not the obvious picks — the things you almost miss. The bakarkhani is extraordinary and it took me three visits to even notice it." },
+    { parentId:p5._id, parentType:'Post', userId:farhan._id, likeCount:8,  content:"20 BDT for something that good is almost suspicious. Going back next week specifically to try this." },
+    { parentId:p5._id, parentType:'Post', userId:jasim._id,  likeCount:11, content:"Ordered it on my last visit after seeing this post was being discussed in the community. Confirmed — it is excellent. The texture is unlike any other bread I have had in the city." },
+    { parentId:p5._id, parentType:'Post', userId:priya._id,  likeCount:3,  content:"Adding this to my list for when I finally do the Old Dhaka trip. 20 BDT is genuinely nothing." },
+    // Post 6 — Healthy Bowl (priya)
+    { parentId:p6._id, parentType:'Post', userId:nadia._id,  likeCount:9,  content:"The calorie count thing is genuinely rare and useful. I always feel uncertain about what I am actually eating at restaurants here. Going to try this." },
+    { parentId:p6._id, parentType:'Post', userId:mitu._id,   likeCount:6,  content:"I have a booking there tomorrow actually. This post is making me more excited. Going to try the Protein Power Bowl specifically." },
+    { parentId:p6._id, parentType:'Post', userId:farhan._id, likeCount:4,  content:"Three times a week at 480 BDT per visit is 5760 BDT a month just for lunch. I respect the commitment but that is not accessible for most people." },
+    { parentId:p6._id, parentType:'Post', userId:kabir._id,  likeCount:8,  content:"Uttara is far for me but the hygiene point is the selling factor. So many places in Dhaka make good food in questionable conditions. If this place is genuinely clean that is worth something." },
+    // Post 7 — Mezban at 11pm (kabir)
+    { parentId:p7._id, parentType:'Post', userId:ahmed._id,  likeCount:13, content:"The late night shawarma market in Dhaka is surprisingly competitive but Mezban is consistently at the top. The fact that it is made fresh and not reheated is the difference." },
+    { parentId:p7._id, parentType:'Post', userId:jasim._id,  likeCount:13, content:"The fuchka there is some of the best I have had. The tamarind water they use is perfectly balanced. You cannot get this at a sit-down restaurant." },
+    { parentId:p7._id, parentType:'Post', userId:rina._id,   likeCount:13, content:"Standing food in Dhaka gets overlooked because the platform culture tends toward sit-down restaurants. This post is a good reminder that some of the best food in the city has no chairs." },
+    { parentId:p7._id, parentType:'Post', userId:farhan._id, likeCount:10, content:"Mirpur 10 at 11pm is fine if you know the area. Worth mentioning for people who are not familiar — go with someone who knows the neighbourhood the first time." },
+    { parentId:p7._id, parentType:'Post', userId:rakib._id,  likeCount:4,  content:"Added Mezban to my favorites based on this thread. Going this Friday after work." },
+    // Post 8 — Reservation complaint (mitu)
+    { parentId:p8._id, parentType:'Post', userId:ahmed._id,  likeCount:12, content:"This happens everywhere. The reservation is treated as a suggestion rather than a commitment. Food Tabs slot system at least blocks the slot so it cannot be double booked." },
+    { parentId:p8._id, parentType:'Post', userId:admin._id,  likeCount:13, content:"This is a real issue we take seriously on Food Tabs. Our reservation system holds the slot in real time and the restaurant owner is notified immediately of each booking. If any Food Tabs restaurant fails to honour a confirmed reservation, please report it through the platform and our team will follow up directly." },
+    { parentId:p8._id, parentType:'Post', userId:rina._id,   likeCount:13, content:"45 minutes with no apology is unacceptable. Reservation culture in Dhaka needs to improve generally. Restaurants that manage it well deserve the business." },
+    { parentId:p8._id, parentType:'Post', userId:kabir._id,  likeCount:13, content:"Had a similar experience. They gave the table to a walk-in while we were waiting. They prioritised the walk-in over the reservation. That is backwards." },
+    { parentId:p8._id, parentType:'Post', userId:farhan._id, likeCount:13, content:"The issue is there is no penalty for restaurants that do this. They take the reservation, give away the table, and face no consequence. Review culture is the only accountability mechanism." },
+    { parentId:p8._id, parentType:'Post', userId:priya._id,  likeCount:5,  content:"Good to know Food Tabs handles this properly. That was one of the reasons I started using this platform specifically for reservations." },
+    // Post 10 — Differential treatment (rakib)
+    { parentId:p10._id,parentType:'Post', userId:rina._id,   likeCount:13, content:"Yes. This is a real and common phenomenon in Dhaka upscale dining. The five-category rating system is for exactly this — you can rate the food highly and the service poorly and both are reflected accurately." },
+    { parentId:p10._id,parentType:'Post', userId:jasim._id,  likeCount:11, content:"I have noticed this too. The solution is consistent: when service is poor, rate service poorly. Enough low service scores and the restaurant knows it has a problem." },
+    { parentId:p10._id,parentType:'Post', userId:farhan._id, likeCount:9,  content:"Write the review. Describe exactly what you noticed. The service criterion exists for a reason. Do not let the food quality prevent you from being honest about the service." },
+    { parentId:p10._id,parentType:'Post', userId:mitu._id,   likeCount:7,  content:"I appreciate you sharing this. It is the kind of feedback that matters. Service quality is a real criterion and it should affect the overall score." },
+    { parentId:p10._id,parentType:'Post', userId:ahmed._id,  likeCount:6,  content:"This is exactly why dish and criteria-level ratings matter more than a single star score. You can give a restaurant 4 stars for food and 2 stars for service and both are captured." },
+    // Post 11 — Birthday dinner ask (priya)
+    { parentId:p11._id,parentType:'Post', userId:ahmed._id,  likeCount:11, content:"Bella Napoli fits perfectly. The service is genuinely good, it is not too loud, and the ambience for parents would be impressive without being overwhelming. The carbonara alone will win them over." },
+    { parentId:p11._id,parentType:'Post', userId:nadia._id,  likeCount:10, content:"Gulshan Grill and Co is also a great option. The outdoor seating in the evening is spectacular and 5000 BDT for 4 people is achievable if you skip the ribeye. The BBQ chicken half is excellent value." },
+    { parentId:p11._id,parentType:'Post', userId:jasim._id,  likeCount:9,  content:"Second the Bella Napoli recommendation. Parents from outside Dhaka are usually impressed by European-style settings. The staff are used to handling special occasions well." },
+    { parentId:p11._id,parentType:'Post', userId:kabir._id,  likeCount:6,  content:"Make a reservation regardless of where you go. Walk-in for a birthday dinner at a Gulshan restaurant on a weekend is risky. Book through Food Tabs and you are guaranteed the table." },
+    // Post 12 — Omakase question (farhan)
+    { parentId:p12._id,parentType:'Post', userId:nadia._id,  likeCount:11, content:"Yes. I attended last month. It is genuinely a special experience — the chef explains each course and the progression of flavours is thoughtful. Not just paying for a label." },
+    { parentId:p12._id,parentType:'Post', userId:rakib._id,  likeCount:9,  content:"4500 taka for 9 courses with a chef narrating each one is actually reasonable by any international standard. The question is your reference point." },
+    { parentId:p12._id,parentType:'Post', userId:jasim._id,  likeCount:7,  content:"The salmon sashimi in the omakase is noticeably better quality than what you get on the regular menu. The chef selects the best cuts for the omakase guests. That alone justifies the premium for me." },
+    // Post 13 — Late night biriyani ask (ahmed)
+    { parentId:p13._id,parentType:'Post', userId:jasim._id,  likeCount:8,  content:"There is a small place on Road 4 that operates until 1am. Cannot vouch for quality but they are always busy which is a good sign." },
+    { parentId:p13._id,parentType:'Post', userId:kabir._id,  likeCount:7,  content:"Star Kacchi itself sometimes stays open later on weekends unofficially. Worth calling ahead." },
+    { parentId:p13._id,parentType:'Post', userId:rina._id,   likeCount:9,  content:"Your best bet honestly is to eat before 11pm. The late night versions of biriyani are usually from the afternoon batch reheated. Quality drops after 10pm at most places." },
+    { parentId:p13._id,parentType:'Post', userId:farhan._id, likeCount:5,  content:"Mirpur has more late night options than Dhanmondi for biriyani. The biriyani culture in Mirpur runs later and the quality at the better places holds up past midnight." },
+    // Post 14 — How to verify reviews (mitu) — admin explanation
+    { parentId:p14._id,parentType:'Post', userId:admin._id,  likeCount:13, content:"Great question. On Food Tabs, reviews written by customers who completed a booking through our platform automatically receive a Verified Visit badge. You can see this badge on the review. It means the reviewer provably visited. Unverified reviews are still genuine in most cases but the badge gives you the highest confidence level." },
+    { parentId:p14._id,parentType:'Post', userId:farhan._id, likeCount:11, content:"That verified badge system is actually what made me trust this platform over others. The badge means something real." },
+    { parentId:p14._id,parentType:'Post', userId:ahmed._id,  likeCount:10, content:"I got the verified badge on my Star Kacchi review without doing anything — the system just detected my booking automatically. Very smooth." },
+    { parentId:p14._id,parentType:'Post', userId:rina._id,   likeCount:8,  content:"The five-criteria rating is also a trust signal. A fake review tends to just give a single star score. A real review typically breaks down the experience across all five criteria." },
+    // Post 20 — Mirpur guide (kabir)
+    { parentId:p20._id,parentType:'Post', userId:ahmed._id,  likeCount:8,  content:"As someone from Mirpur I appreciate this. The fuchka culture here is specifically different from Dhanmondi and worth its own guide." },
+    { parentId:p20._id,parentType:'Post', userId:jasim._id,  likeCount:9,  content:"Mezban Street Kitchen should be on everyone's Mirpur list. The chicken shawarma at 120 taka is the best value in the area." },
+    { parentId:p20._id,parentType:'Post', userId:priya._id,  likeCount:5,  content:"This is exactly the kind of hyperlocal knowledge that food apps usually miss. Thank you for this." },
+    { parentId:p20._id,parentType:'Post', userId:rina._id,   likeCount:7,  content:"The halim you mentioned on Section 2 — is it the one near the main road or inside the market? Want to make sure I find the right one." },
+    { parentId:p20._id,parentType:'Post', userId:nadia._id,  likeCount:6,  content:"Coming from Gulshan, Mirpur feels far but reading this makes me think the trip is justified. Planning a Saturday food trip based on this guide." },
+  ];
+
+  const createdComments = await Comment.insertMany(commentData);
+
+  // Nested replies
+  const post1FarhanComment = createdComments.find(c => c.parentId.toString() === p1._id.toString() && c.userId.toString() === farhan._id.toString());
+  const post1MituComment   = createdComments.find(c => c.parentId.toString() === p1._id.toString() && c.userId.toString() === mitu._id.toString());
+  const post3TariqComment  = createdComments.find(c => c.parentId.toString() === p3._id.toString() && c.userId.toString() === tariq._id.toString());
+  const post3MituComment   = createdComments.find(c => c.parentId.toString() === p3._id.toString() && c.userId.toString() === mitu._id.toString());
+  const post6FarhanComment = createdComments.find(c => c.parentId.toString() === p6._id.toString() && c.userId.toString() === farhan._id.toString());
+  const adminVerifyComment = createdComments.find(c => c.parentId.toString() === p14._id.toString() && c.userId.toString() === admin._id.toString());
+
+  const nestedReplies = [];
+  if (post1FarhanComment) nestedReplies.push({
+    parentId:p1._id, parentType:'Post', parentCommentId:post1FarhanComment._id,
+    userId:rina._id, likeCount:5, content:"Fair enough. I will give them another try for the meat quality. The hygiene is just something I cannot ignore though."
+  });
+  if (post1MituComment) nestedReplies.push({
+    parentId:p1._id, parentType:'Post', parentCommentId:post1MituComment._id,
+    userId:ahmed._id, likeCount:7, content:"The Morog Polao is good but not as good as the Kacchi. If you are going for the first time, do the Kacchi. After you have had it a few times, try the Morog Polao as a comparison."
+  });
+  if (post3TariqComment) nestedReplies.push({
+    parentId:p3._id, parentType:'Post', parentCommentId:post3TariqComment._id,
+    userId:farhan._id, likeCount:13, content:"The consistency is the remarkable thing. You can feel that the recipe is not being improvised. It tastes like it has been made the same way for a very long time. That is rare."
+  });
+  if (post3MituComment) nestedReplies.push({
+    parentId:p3._id, parentType:'Post', parentCommentId:post3MituComment._id,
+    userId:farhan._id, likeCount:8, content:"Completely fine. It is on a main road and easy to find. The restaurant itself feels straightforward to walk into even if you are not familiar with the area. Go on a weekday morning when it is less crowded."
+  });
+  if (post6FarhanComment) nestedReplies.push({
+    parentId:p6._id, parentType:'Post', parentCommentId:post6FarhanComment._id,
+    userId:priya._id, likeCount:5, content:"Fair point. I cut other spending to make it work. Not saying it is cheap but the health impact for me personally has been worth it."
+  });
+  if (adminVerifyComment) nestedReplies.push({
+    parentId:p14._id, parentType:'Post', parentCommentId:adminVerifyComment._id,
+    userId:priya._id, likeCount:7, content:"Thank you for explaining this! I had the verified badge question specifically because I am new to the platform. This makes me much more confident using the reviews to decide where to book."
+  });
+  const createdNestedReplies = nestedReplies.length ? await Comment.insertMany(nestedReplies) : [];
+
+  // Update commentsCount on posts
+  for (const post of [p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20]) {
+    const count = await Comment.countDocuments({ parentId: post._id, parentType: 'Post' });
+    await Post.findByIdAndUpdate(post._id, { commentsCount: count });
+  }
+  console.log('Comments created');
+
+  // ── Votes ─────────────────────────────────────────────────────────────────
+  // Helper: returns up to n users excluding the given author (by _id)
+  const allUsers = [ahmed,rina,farhan,jasim,kabir,mitu,rakib,nadia,priya,sonia,sumaiya,tariq,rahim,admin];
+  const without = (author, n) => allUsers.filter(u => u._id.toString() !== author._id.toString()).slice(0, n);
+
+  const voteData = [
+    // ── Post votes (value:1) ──────────────────────────────────────────────
+    ...without(jasim,  12).map(u => ({ userId:u._id, parentId:p1._id,  parentType:'Post', value:1 })),
+    ...without(rina,   10).map(u => ({ userId:u._id, parentId:p2._id,  parentType:'Post', value:1 })),
+    ...without(farhan, 13).map(u => ({ userId:u._id, parentId:p3._id,  parentType:'Post', value:1 })),
+    ...without(nadia,   8).map(u => ({ userId:u._id, parentId:p4._id,  parentType:'Post', value:1 })),
+    ...without(ahmed,  11).map(u => ({ userId:u._id, parentId:p5._id,  parentType:'Post', value:1 })),
+    ...without(priya,   8).map(u => ({ userId:u._id, parentId:p6._id,  parentType:'Post', value:1 })),
+    ...without(kabir,  10).map(u => ({ userId:u._id, parentId:p7._id,  parentType:'Post', value:1 })),
+    ...without(mitu,    9).map(u => ({ userId:u._id, parentId:p8._id,  parentType:'Post', value:1 })),
+    // p9: isPublished:false — no votes
+    ...without(rakib,   7).map(u => ({ userId:u._id, parentId:p10._id, parentType:'Post', value:1 })),
+    ...without(priya,   8).map(u => ({ userId:u._id, parentId:p11._id, parentType:'Post', value:1 })),
+    ...without(farhan,  8).map(u => ({ userId:u._id, parentId:p12._id, parentType:'Post', value:1 })),
+    ...without(ahmed,   9).map(u => ({ userId:u._id, parentId:p13._id, parentType:'Post', value:1 })),
+    ...without(mitu,   10).map(u => ({ userId:u._id, parentId:p14._id, parentType:'Post', value:1 })),
+    ...without(kabir,   6).map(u => ({ userId:u._id, parentId:p15._id, parentType:'Post', value:1 })),
+    ...without(rina,    9).map(u => ({ userId:u._id, parentId:p16._id, parentType:'Post', value:1 })),
+    ...without(jasim,   7).map(u => ({ userId:u._id, parentId:p17._id, parentType:'Post', value:1 })),
+    ...without(jasim,  10).map(u => ({ userId:u._id, parentId:p18._id, parentType:'Post', value:1 })),
+    ...without(nadia,   9).map(u => ({ userId:u._id, parentId:p19._id, parentType:'Post', value:1 })),
+    ...without(kabir,  10).map(u => ({ userId:u._id, parentId:p20._id, parentType:'Post', value:1 })),
+
+    // ── Comment votes ──────────────────────────────────────────────────────
+    // p1: [0]ahmed(11) [1]farhan(-2) [2]rina(10) [3]kabir(13) [4]mitu(5) [5]rakib(9) [6]priya(4) [7]nadia(8)
+    ...without(ahmed,  11).map(u => ({ userId:u._id, parentId:createdComments[0]._id,  parentType:'Comment', value:1  })),
+    ...[ahmed,kabir]       .map(u => ({ userId:u._id, parentId:createdComments[1]._id,  parentType:'Comment', value:-1 })),
+    ...without(rina,   10).map(u => ({ userId:u._id, parentId:createdComments[2]._id,  parentType:'Comment', value:1  })),
+    ...without(kabir,  13).map(u => ({ userId:u._id, parentId:createdComments[3]._id,  parentType:'Comment', value:1  })),
+    ...without(mitu,    5).map(u => ({ userId:u._id, parentId:createdComments[4]._id,  parentType:'Comment', value:1  })),
+    ...without(rakib,   9).map(u => ({ userId:u._id, parentId:createdComments[5]._id,  parentType:'Comment', value:1  })),
+    ...without(priya,   4).map(u => ({ userId:u._id, parentId:createdComments[6]._id,  parentType:'Comment', value:1  })),
+    ...without(nadia,   8).map(u => ({ userId:u._id, parentId:createdComments[7]._id,  parentType:'Comment', value:1  })),
+    // p2: [8]ahmed(12) [9]jasim(13) [10]nadia(13) [11]sumaiya(6) [12]farhan(6)
+    ...without(ahmed,  12).map(u => ({ userId:u._id, parentId:createdComments[8]._id,  parentType:'Comment', value:1 })),
+    ...without(jasim,  13).map(u => ({ userId:u._id, parentId:createdComments[9]._id,  parentType:'Comment', value:1 })),
+    ...without(nadia,  13).map(u => ({ userId:u._id, parentId:createdComments[10]._id, parentType:'Comment', value:1 })),
+    ...without(sumaiya, 6).map(u => ({ userId:u._id, parentId:createdComments[11]._id, parentType:'Comment', value:1 })),
+    ...without(farhan,  6).map(u => ({ userId:u._id, parentId:createdComments[12]._id, parentType:'Comment', value:1 })),
+    // p3: [13]jasim(13) [14]tariq(13) [15]ahmed(13) [16]priya(6) [17]mitu(3) [18]rina(11)
+    ...without(jasim,  13).map(u => ({ userId:u._id, parentId:createdComments[13]._id, parentType:'Comment', value:1 })),
+    ...without(tariq,  13).map(u => ({ userId:u._id, parentId:createdComments[14]._id, parentType:'Comment', value:1 })),
+    ...without(ahmed,  13).map(u => ({ userId:u._id, parentId:createdComments[15]._id, parentType:'Comment', value:1 })),
+    ...without(priya,   6).map(u => ({ userId:u._id, parentId:createdComments[16]._id, parentType:'Comment', value:1 })),
+    ...without(mitu,    3).map(u => ({ userId:u._id, parentId:createdComments[17]._id, parentType:'Comment', value:1 })),
+    ...without(rina,   11).map(u => ({ userId:u._id, parentId:createdComments[18]._id, parentType:'Comment', value:1 })),
+    // p4: [19]farhan(11) [20]rakib(13) [21]jasim(9) [22]priya(4)
+    ...without(farhan, 11).map(u => ({ userId:u._id, parentId:createdComments[19]._id, parentType:'Comment', value:1 })),
+    ...without(rakib,  13).map(u => ({ userId:u._id, parentId:createdComments[20]._id, parentType:'Comment', value:1 })),
+    ...without(jasim,   9).map(u => ({ userId:u._id, parentId:createdComments[21]._id, parentType:'Comment', value:1 })),
+    ...without(priya,   4).map(u => ({ userId:u._id, parentId:createdComments[22]._id, parentType:'Comment', value:1 })),
+    // p5: [23]tariq(13) [24]rina(13) [25]farhan(8) [26]jasim(11) [27]priya(3)
+    ...without(tariq,  13).map(u => ({ userId:u._id, parentId:createdComments[23]._id, parentType:'Comment', value:1 })),
+    ...without(rina,   13).map(u => ({ userId:u._id, parentId:createdComments[24]._id, parentType:'Comment', value:1 })),
+    ...without(farhan,  8).map(u => ({ userId:u._id, parentId:createdComments[25]._id, parentType:'Comment', value:1 })),
+    ...without(jasim,  11).map(u => ({ userId:u._id, parentId:createdComments[26]._id, parentType:'Comment', value:1 })),
+    ...without(priya,   3).map(u => ({ userId:u._id, parentId:createdComments[27]._id, parentType:'Comment', value:1 })),
+    // p6: [28]nadia(9) [29]mitu(6) [30]farhan(4) [31]kabir(8)
+    ...without(nadia,   9).map(u => ({ userId:u._id, parentId:createdComments[28]._id, parentType:'Comment', value:1 })),
+    ...without(mitu,    6).map(u => ({ userId:u._id, parentId:createdComments[29]._id, parentType:'Comment', value:1 })),
+    ...without(farhan,  4).map(u => ({ userId:u._id, parentId:createdComments[30]._id, parentType:'Comment', value:1 })),
+    ...without(kabir,   8).map(u => ({ userId:u._id, parentId:createdComments[31]._id, parentType:'Comment', value:1 })),
+    // p7: [32]ahmed(13) [33]jasim(13) [34]rina(13) [35]farhan(10) [36]rakib(4)
+    ...without(ahmed,  13).map(u => ({ userId:u._id, parentId:createdComments[32]._id, parentType:'Comment', value:1 })),
+    ...without(jasim,  13).map(u => ({ userId:u._id, parentId:createdComments[33]._id, parentType:'Comment', value:1 })),
+    ...without(rina,   13).map(u => ({ userId:u._id, parentId:createdComments[34]._id, parentType:'Comment', value:1 })),
+    ...without(farhan, 10).map(u => ({ userId:u._id, parentId:createdComments[35]._id, parentType:'Comment', value:1 })),
+    ...without(rakib,   4).map(u => ({ userId:u._id, parentId:createdComments[36]._id, parentType:'Comment', value:1 })),
+    // p8: [37]ahmed(12) [38]admin(13) [39]rina(13) [40]kabir(13) [41]farhan(13) [42]priya(5)
+    ...without(ahmed,  12).map(u => ({ userId:u._id, parentId:createdComments[37]._id, parentType:'Comment', value:1 })),
+    ...without(admin,  13).map(u => ({ userId:u._id, parentId:createdComments[38]._id, parentType:'Comment', value:1 })),
+    ...without(rina,   13).map(u => ({ userId:u._id, parentId:createdComments[39]._id, parentType:'Comment', value:1 })),
+    ...without(kabir,  13).map(u => ({ userId:u._id, parentId:createdComments[40]._id, parentType:'Comment', value:1 })),
+    ...without(farhan, 13).map(u => ({ userId:u._id, parentId:createdComments[41]._id, parentType:'Comment', value:1 })),
+    ...without(priya,   5).map(u => ({ userId:u._id, parentId:createdComments[42]._id, parentType:'Comment', value:1 })),
+    // p10: [43]rina(13) [44]jasim(11) [45]farhan(9) [46]mitu(7) [47]ahmed(6)
+    ...without(rina,   13).map(u => ({ userId:u._id, parentId:createdComments[43]._id, parentType:'Comment', value:1 })),
+    ...without(jasim,  11).map(u => ({ userId:u._id, parentId:createdComments[44]._id, parentType:'Comment', value:1 })),
+    ...without(farhan,  9).map(u => ({ userId:u._id, parentId:createdComments[45]._id, parentType:'Comment', value:1 })),
+    ...without(mitu,    7).map(u => ({ userId:u._id, parentId:createdComments[46]._id, parentType:'Comment', value:1 })),
+    ...without(ahmed,   6).map(u => ({ userId:u._id, parentId:createdComments[47]._id, parentType:'Comment', value:1 })),
+    // p11: [48]ahmed(11) [49]nadia(10) [50]jasim(9) [51]kabir(6)
+    ...without(ahmed,  11).map(u => ({ userId:u._id, parentId:createdComments[48]._id, parentType:'Comment', value:1 })),
+    ...without(nadia,  10).map(u => ({ userId:u._id, parentId:createdComments[49]._id, parentType:'Comment', value:1 })),
+    ...without(jasim,   9).map(u => ({ userId:u._id, parentId:createdComments[50]._id, parentType:'Comment', value:1 })),
+    ...without(kabir,   6).map(u => ({ userId:u._id, parentId:createdComments[51]._id, parentType:'Comment', value:1 })),
+    // p12: [52]nadia(11) [53]rakib(9) [54]jasim(7)
+    ...without(nadia,  11).map(u => ({ userId:u._id, parentId:createdComments[52]._id, parentType:'Comment', value:1 })),
+    ...without(rakib,   9).map(u => ({ userId:u._id, parentId:createdComments[53]._id, parentType:'Comment', value:1 })),
+    ...without(jasim,   7).map(u => ({ userId:u._id, parentId:createdComments[54]._id, parentType:'Comment', value:1 })),
+    // p13: [55]jasim(8) [56]kabir(7) [57]rina(9) [58]farhan(5)
+    ...without(jasim,   8).map(u => ({ userId:u._id, parentId:createdComments[55]._id, parentType:'Comment', value:1 })),
+    ...without(kabir,   7).map(u => ({ userId:u._id, parentId:createdComments[56]._id, parentType:'Comment', value:1 })),
+    ...without(rina,    9).map(u => ({ userId:u._id, parentId:createdComments[57]._id, parentType:'Comment', value:1 })),
+    ...without(farhan,  5).map(u => ({ userId:u._id, parentId:createdComments[58]._id, parentType:'Comment', value:1 })),
+    // p14: [59]admin(13) [60]farhan(11) [61]ahmed(10) [62]rina(8)
+    ...without(admin,  13).map(u => ({ userId:u._id, parentId:createdComments[59]._id, parentType:'Comment', value:1 })),
+    ...without(farhan, 11).map(u => ({ userId:u._id, parentId:createdComments[60]._id, parentType:'Comment', value:1 })),
+    ...without(ahmed,  10).map(u => ({ userId:u._id, parentId:createdComments[61]._id, parentType:'Comment', value:1 })),
+    ...without(rina,    8).map(u => ({ userId:u._id, parentId:createdComments[62]._id, parentType:'Comment', value:1 })),
+    // p20: [63]ahmed(8) [64]jasim(9) [65]priya(5) [66]rina(7) [67]nadia(6)
+    ...without(ahmed,   8).map(u => ({ userId:u._id, parentId:createdComments[63]._id, parentType:'Comment', value:1 })),
+    ...without(jasim,   9).map(u => ({ userId:u._id, parentId:createdComments[64]._id, parentType:'Comment', value:1 })),
+    ...without(priya,   5).map(u => ({ userId:u._id, parentId:createdComments[65]._id, parentType:'Comment', value:1 })),
+    ...without(rina,    7).map(u => ({ userId:u._id, parentId:createdComments[66]._id, parentType:'Comment', value:1 })),
+    ...without(nadia,   6).map(u => ({ userId:u._id, parentId:createdComments[67]._id, parentType:'Comment', value:1 })),
+
+    // ── Nested reply votes ────────────────────────────────────────────────
+    // nr[0] rina→p1 (likeCount:5), nr[1] ahmed→p1 (7), nr[2] farhan→p3 (13),
+    // nr[3] farhan→p3 (8),         nr[4] priya→p6 (5), nr[5] priya→p14 (7)
+    ...(createdNestedReplies[0] ? without(rina,   5).map(u => ({ userId:u._id, parentId:createdNestedReplies[0]._id, parentType:'Comment', value:1 })) : []),
+    ...(createdNestedReplies[1] ? without(ahmed,  7).map(u => ({ userId:u._id, parentId:createdNestedReplies[1]._id, parentType:'Comment', value:1 })) : []),
+    ...(createdNestedReplies[2] ? without(farhan,13).map(u => ({ userId:u._id, parentId:createdNestedReplies[2]._id, parentType:'Comment', value:1 })) : []),
+    ...(createdNestedReplies[3] ? without(farhan, 8).map(u => ({ userId:u._id, parentId:createdNestedReplies[3]._id, parentType:'Comment', value:1 })) : []),
+    ...(createdNestedReplies[4] ? without(priya,  5).map(u => ({ userId:u._id, parentId:createdNestedReplies[4]._id, parentType:'Comment', value:1 })) : []),
+    ...(createdNestedReplies[5] ? without(priya,  7).map(u => ({ userId:u._id, parentId:createdNestedReplies[5]._id, parentType:'Comment', value:1 })) : []),
+
+    // ── Review votes ──────────────────────────────────────────────────────
+    ...[ahmed,jasim,mitu].map(u => ({ userId:u._id, parentId:reviews[0]._id,  parentType:'Review', value:1 })),
+    ...[rina,nadia,kabir].map(u => ({ userId:u._id, parentId:reviews[16]._id, parentType:'Review', value:1 })),
+  ];
+  // Remove potential duplicates by userId+parentId combination
+  const seen = new Set();
+  const uniqueVotes = voteData.filter(v => {
+    const key = `${v.userId}-${v.parentId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  await Vote.insertMany(uniqueVotes);
+  console.log('Votes created');
+
+  // ── Reports ───────────────────────────────────────────────────────────────
+  const soniaMezbanReview = reviews.find(rv => rv.userId.toString() === sonia._id.toString() && rv.restaurantId.toString() === r6._id.toString());
+  const soniaPost = p9;
+
+  await Report.insertMany([
+    { reporterId:farhan._id, reviewId:soniaMezbanReview._id, type:'review', reason:'inappropriate', status:'pending', description:'Review makes potentially misleading health claims without evidence.' },
+    { reporterId:mitu._id, postId:soniaPost._id, type:'post', reason:'health-claim', status:'pending', description:'Post makes a health-safety allegation that requires verification.' },
+    { reporterId:admin._id, commentId:createdComments[3]._id, type:'comment', reason:'spam', status:'resolved', adminNotes:'Warning issued to user.', action:'warn', actionTakenBy:admin._id },
+    { reporterId:sumaiya._id, reviewId:reviews.find(rv=>rv.restaurantId.toString()===r2._id.toString()&&rv.userId.toString()===farhan._id.toString())._id, type:'review', reason:'fake-review', status:'pending', description:'Suspect this is a competitor review — rating inconsistent with the review content.' },
+    { reporterId:admin._id, reviewId:reviews[0]._id, type:'review', reason:'spam', status:'resolved', adminNotes:'Review was genuine. No action taken.', action:'none', actionTakenBy:admin._id },
+  ]);
+  console.log('Reports created');
+
   // ── Print summary ─────────────────────────────────────────────────────────
   console.log(`
 ========================================
-FOOD TABS — SEED S1 COMPLETE
-Sprint 1: Foundation, Search, Restaurant Profiles, Dish Reviews, Rating System, Photo Upload
+FOOD TABS — SEED S2 COMPLETE
+Sprint 2: Community — Forum, Comments, Voting, Moderation, Verified Badge
 ========================================
 
 TEST ACCOUNTS:
 
-ADMIN
-  Email:    admin@foodtabs.com
-  Password: Admin@1234
-
-OWNERS
-  rahim@foodtabs.com    Owner@1234  → Star Kacchi House
-  sumaiya@foodtabs.com  Owner@1234  → Gulshan Grill and Co
-  tariq@foodtabs.com    Owner@1234  → Puran Dhaka Bhojon
-  kenji@foodtabs.com    Owner@1234  → Sakura Japanese Kitchen
-  lorenzo@foodtabs.com  Owner@1234  → Bella Napoli
-  mizanur@foodtabs.com  Owner@1234  → Mezban Street Kitchen
-  sara@foodtabs.com     Owner@1234  → The Healthy Bowl
-  amir@foodtabs.com     Owner@1234  → Blue Ocean Seafood (pending verification)
-
-CUSTOMERS
-  ahmed@foodtabs.com    Customer@1234
-  nadia@foodtabs.com    Customer@1234
-  rina@foodtabs.com     Customer@1234
-  farhan@foodtabs.com   Customer@1234
-  mitu@foodtabs.com     Customer@1234
-  kabir@foodtabs.com    Customer@1234
-  sonia@foodtabs.com    Customer@1234
-  rakib@foodtabs.com    Customer@1234
-  priya@foodtabs.com    Customer@1234
-  jasim@foodtabs.com    Customer@1234
+ADMIN   admin@foodtabs.com    Admin@1234
+OWNERS  [owner]@foodtabs.com  Owner@1234
+CUSTOMERS [name]@foodtabs.com Customer@1234
 
 WHAT YOU CAN TEST:
-  Restaurant search     — search for "biriyani", "japanese", "healthy"
-  Restaurant profiles   — view menus, ratings, criteria breakdowns
-  Dish reviews          — each dish has its own rating from customer reviews
-  Photo upload          — upload photos when writing a review
-  Owner responses       — Rahim and Sumaiya have responded to reviews
-  Rating system         — all 8 restaurants have aggregated ratings from real reviews
+  Forum posts       — 20 posts across 6 categories
+  Comment threads   — nested replies on key posts
+  Voting            — upvote/downvote posts and comments
+  Moderation queue  — log in as admin, check reports
+  Review votes      — reviews have like counts from customers
+  Owner comments    — Rahim (kacchi) and Tariq (puran dhaka) posted in forum
 ========================================
 `);
 
