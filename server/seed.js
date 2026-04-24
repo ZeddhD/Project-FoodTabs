@@ -11,6 +11,10 @@ import Post from './models/Post.js';
 import Comment from './models/Comment.js';
 import Vote from './models/Vote.js';
 import Report from './models/Report.js';
+import Favorite from './models/Favorite.js';
+import SavedOrder from './models/SavedOrder.js';
+import Event from './models/Event.js';
+import EventBooking from './models/EventBooking.js';
 
 const hash = (pw) => bcryptjs.hash(pw, 10);
 
@@ -32,7 +36,11 @@ async function seed() {
   console.log('Connected to MongoDB');
 
   // ── Drop all collections ──────────────────────────────────────────────────
-  const collections = ['users','restaurants','dishes','reviews','posts','comments','votes','reports'];
+  const collections = [
+    'users','restaurants','dishes','reviews',
+    'posts','comments','votes','reports',
+    'favorites','savedorders','events','eventbookings'
+  ];
   for (const col of collections) {
     try { await mongoose.connection.dropCollection(col); } catch { /* didn't exist */ }
   }
@@ -1124,11 +1132,89 @@ async function seed() {
   ]);
   console.log('Reports created');
 
+  // ── Events ────────────────────────────────────────────────────────────────
+  const [evKacchi, evGulshan, evSakura] = await Event.insertMany([
+    {
+      restaurantId: r1._id,
+      name: 'Eid Special Dawat',
+      description: 'A special Eid celebration menu featuring our legendary Kacchi, Rezala, Borhani, and a three-dessert finale. Traditional setting, festive atmosphere.',
+      eventDate: daysFromNow(10), eventTime: '19:00',
+      price: 1500, capacity: 30, seatsBooked: 22, isActive: true
+    },
+    {
+      restaurantId: r2._id,
+      name: 'Friday Night BBQ',
+      description: 'Live charcoal grilling, unlimited sides, a DJ set, and the best meats in Dhaka. Adults only.',
+      eventDate: nextWeekday(5), eventTime: '20:00',
+      price: 2500, capacity: 40, seatsBooked: 38, isActive: true
+    },
+    {
+      restaurantId: r4._id,
+      name: 'Omakase Evening',
+      description: 'A 9-course omakase experience curated by our head chef. Seasonal ingredients, sake pairing available. Maximum 12 guests.',
+      eventDate: daysFromNow(21), eventTime: '19:30',
+      price: 4500, capacity: 12, seatsBooked: 4, isActive: true
+    }
+  ]);
+  console.log('Events created');
+
+  // Event bookings (seats purchased)
+  await EventBooking.insertMany([
+    { userId:rina._id,  restaurantId:r1._id, eventName:'Eid Special Dawat', eventType:'Special Event',
+      eventDate:evKacchi.eventDate, eventTime:'19:00', duration:180, guestCount:1,
+      estimatedBudget:1500, status:'confirmed', confirmationCode:'EV-RINA-EID-001' },
+    { userId:kabir._id, restaurantId:r2._id, eventName:'Friday Night BBQ',  eventType:'Special Event',
+      eventDate:evGulshan.eventDate, eventTime:'20:00', duration:240, guestCount:1,
+      estimatedBudget:2500, status:'confirmed', confirmationCode:'EV-KABIR-BBQ-001' },
+  ]);
+
+  // ── Favorites ─────────────────────────────────────────────────────────────
+  await Favorite.insertMany([
+    { userId:rakib._id, restaurantId:r1._id, type:'restaurant' },
+    { userId:rakib._id, restaurantId:r4._id, type:'restaurant' },
+    { userId:ahmed._id, restaurantId:r2._id, type:'restaurant' },
+    { userId:ahmed._id, restaurantId:r6._id, type:'restaurant' },
+    { userId:nadia._id, restaurantId:r5._id, type:'restaurant' },
+    { userId:nadia._id, restaurantId:r7._id, type:'restaurant' },
+  ]);
+
+  // ── Saved Orders ──────────────────────────────────────────────────────────
+  const kacchiBeef  = d('Kacchi Biriyani (Beef)');
+  const borhaniR1   = d('Borhani');
+  const firni       = d('Firni');
+  const ribeyeSteak = d('Ribeye Steak 300g');
+  const lavaChoc    = d('Chocolate Lava Cake');
+
+  await SavedOrder.insertMany([
+    {
+      userId: rakib._id, restaurantId: r1._id,
+      name: 'My Usual Friday Night',
+      items: [
+        { dishId: kacchiBeef._id, quantity: 1, price: kacchiBeef.price },
+        { dishId: borhaniR1._id, quantity: 1, price: borhaniR1.price },
+        { dishId: firni._id,     quantity: 1, price: firni.price }
+      ],
+      totalPrice: kacchiBeef.price + borhaniR1.price + firni.price
+    },
+    {
+      userId: ahmed._id, restaurantId: r2._id,
+      name: 'Date Night',
+      items: [
+        { dishId: ribeyeSteak._id, quantity: 1, price: ribeyeSteak.price },
+        { dishId: lavaChoc._id,    quantity: 2, price: lavaChoc.price }
+      ],
+      totalPrice: ribeyeSteak.price + (lavaChoc.price * 2)
+    }
+  ]);
+  console.log('Favorites and saved orders created');
+
+  console.log('Favorites and saved orders created');
+
   // ── Print summary ─────────────────────────────────────────────────────────
   console.log(`
 ========================================
-FOOD TABS — SEED S2 COMPLETE
-Sprint 2: Community — Forum, Comments, Voting, Moderation, Verified Badge
+FOOD TABS — SEED S3 COMPLETE
+Sprint 3: Discovery — Recommendations, Favorites, Saved Orders, Event Booking
 ========================================
 
 TEST ACCOUNTS:
@@ -1138,12 +1224,11 @@ OWNERS  [owner]@foodtabs.com  Owner@1234
 CUSTOMERS [name]@foodtabs.com Customer@1234
 
 WHAT YOU CAN TEST:
-  Forum posts       — 20 posts across 6 categories
-  Comment threads   — nested replies on key posts
-  Voting            — upvote/downvote posts and comments
-  Moderation queue  — log in as admin, check reports
-  Review votes      — reviews have like counts from customers
-  Owner comments    — Rahim (kacchi) and Tariq (puran dhaka) posted in forum
+  Events            — Eid Special Dawat (Star Kacchi), Friday Night BBQ (Gulshan), Omakase Evening (Sakura)
+  Event booking     — try booking the Friday Night BBQ (only 2 seats left)
+  Favorites         — log in as rakib or ahmed, check saved restaurants
+  Saved orders      — log in as rakib (My Usual Friday Night) or ahmed (Date Night)
+  Forum + community — all Sprint 2 features still active
 ========================================
 `);
 
