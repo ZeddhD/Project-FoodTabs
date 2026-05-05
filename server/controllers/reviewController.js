@@ -9,17 +9,20 @@ import path from 'path';
 
 export const getReviews = async (req, res, next) => {
   try {
-    const { restaurantId, dishId, userId, page, limit, sortBy } = req.query;
+    const { restaurantId, dishId, userId, page, limit, sortBy, minRating, verified } = req.query;
     const { skip, limitNum } = getPaginationParams(page, limit);
 
-    let filter = {};
+    let filter = { isPublished: { $ne: false } };
     if (restaurantId) filter.restaurantId = restaurantId;
-    if (dishId) filter.dishId = dishId;
-    if (userId) filter.userId = userId;
+    if (dishId)       filter.dishId       = dishId;
+    if (userId)       filter.userId       = userId;
+    if (minRating)    filter.rating       = { $gte: parseFloat(minRating) };
+    if (verified === 'true') filter.verifiedVisit = true;
 
     let sort = { createdAt: -1 };
-    if (sortBy === 'rating') sort = { rating: -1 };
+    if (sortBy === 'rating')  sort = { rating: -1 };
     if (sortBy === 'popular') sort = { likeCount: -1 };
+    if (sortBy === 'helpful') sort = { likeCount: -1 };
 
     const total = await Review.countDocuments(filter);
     const reviews = await Review.find(filter)
@@ -275,34 +278,3 @@ export const deleteReview = async (req, res, next) => {
 };
 
 // Like/Unlike review
-export const likeReview = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    const review = await Review.findByIdAndUpdate(
-      id,
-      { $inc: { likeCount: 1 } },
-      { new: true }
-    );
-
-    sendResponse(res, 200, true, 'Review liked', review);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const unlikeReview = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    const review = await Review.findByIdAndUpdate(
-      id,
-      { $inc: { likeCount: -1 } },
-      { new: true }
-    );
-
-    sendResponse(res, 200, true, 'Review unliked', review);
-  } catch (error) {
-    next(error);
-  }
-};

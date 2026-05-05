@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { restaurantAPI, reviewAPI, favoriteAPI, dishAPI } from '../services/api';
 import { useAuthStore } from '../context/store';
 import { ReviewCard, StarRating, CriteriaFullBars, VerifiedBadgeSVG, SkeletonReviewCard } from '../components/common';
+import ReportModal from '../components/ReportModal';
 
 const CRITERIA_COLORS = {
   taste: '#E8460B', hygiene: '#0BA3A3', service: '#2563EB', ambience: '#7C3AED', value: '#16A34A',
@@ -155,6 +156,7 @@ export default function RestaurantPage() {
   const [notification, setNotification] = useState(null);
   const [activeDishFilter, setActiveDishFilter] = useState('all');
   const [activeReviewDish, setActiveReviewDish] = useState(null);
+  const [reportTarget, setReportTarget] = useState(null);
   const reviewsRef = useRef(null);
 
   useEffect(() => { fetchRestaurantDetails(); }, [id]);
@@ -272,14 +274,17 @@ export default function RestaurantPage() {
       {/* Hero */}
       <div className="restaurant-hero">
         {restaurant.coverImage ? (
-          <img src={restaurant.coverImage} alt={restaurant.name} />
-        ) : (
-          <div style={{
-            width: '100%', height: '100%',
-            background: 'linear-gradient(135deg, #1A1A1A 0%, #3D1A08 50%, #E8460B 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80
-          }}>🍽️</div>
-        )}
+          <img
+            src={restaurant.coverImage}
+            alt={restaurant.name}
+            onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+          />
+        ) : null}
+        <div style={{
+          width: '100%', height: '100%',
+          background: 'linear-gradient(135deg, #1A1A1A 0%, #3D1A08 50%, #E8460B 100%)',
+          display: restaurant.coverImage ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80
+        }}>🍽️</div>
         <div className="restaurant-hero__overlay" />
         <div className="restaurant-hero__info" style={{ maxWidth: 'var(--max-w)', margin: '0 auto', padding: '0 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
@@ -290,8 +295,11 @@ export default function RestaurantPage() {
                 <span style={{ fontWeight: 700, fontSize: 15 }}>{restaurant.rating?.toFixed(1)}</span>
                 <span style={{ fontSize: 13, opacity: 0.75 }}>({totalReviews} reviews)</span>
                 {restaurant.isVerified && (
-                  <span style={{ padding: '3px 10px', borderRadius: 'var(--r-full)', background: 'rgba(16,185,129,0.25)', color: '#6EE7B7', fontSize: 12, fontWeight: 700 }}>
-                    ✓ Verified
+                  <span
+                    title="This restaurant has been reviewed and verified by the FoodTabs team"
+                    style={{ padding: '3px 10px', borderRadius: 'var(--r-full)', background: 'rgba(16,185,129,0.25)', color: '#6EE7B7', fontSize: 12, fontWeight: 700, cursor: 'default' }}
+                  >
+                    ✓ FoodTabs Verified
                   </span>
                 )}
                 {restaurant.cuisineTypes?.slice(0, 2).map(c => (
@@ -337,6 +345,46 @@ export default function RestaurantPage() {
 
           {/* Left column */}
           <div>
+            {/* ── Photo gallery ── */}
+            {restaurant.images?.length > 0 && (
+              <div style={{ marginBottom: 28 }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 800, marginBottom: 12, color: 'var(--clr-dark)' }}>
+                  Photos
+                </h2>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: restaurant.images.length === 1 ? '1fr' : restaurant.images.length === 2 ? '1fr 1fr' : 'repeat(3, 1fr)',
+                  gap: 8,
+                }}>
+                  {restaurant.images.slice(0, 6).map((src, i) => (
+                    <div key={i} style={{
+                      aspectRatio: '4/3', borderRadius: 'var(--r-md)', overflow: 'hidden',
+                      background: 'var(--clr-bg-alt)', position: 'relative',
+                    }}>
+                      <img
+                        src={src}
+                        alt={`${restaurant.name} photo ${i + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        onError={e => {
+                          e.target.style.display = 'none';
+                          e.target.parentNode.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;background:var(--clr-bg-alt)">🖼️</div>';
+                        }}
+                      />
+                      {i === 5 && restaurant.images.length > 6 && (
+                        <div style={{
+                          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: 'white', fontWeight: 700, fontSize: 20,
+                        }}>
+                          +{restaurant.images.length - 6} more
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* ── Rating block ── */}
             <div style={{ marginBottom: 32, padding: '24px', background: 'var(--clr-bg-2)', borderRadius: 'var(--r-lg)', border: '1px solid var(--clr-border)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap' }}>
@@ -554,7 +602,11 @@ export default function RestaurantPage() {
                           ))}
                         </div>
                       )}
-                      <ReviewCard review={review} currentUserId={user?._id} />
+                      <ReviewCard
+                        review={review}
+                        currentUserId={user?._id}
+                        onReport={isAuthenticated ? (id) => setReportTarget({ type: 'review', id }) : undefined}
+                      />
                     </div>
                   );
                 })
@@ -569,7 +621,7 @@ export default function RestaurantPage() {
                   <div style={{ fontSize: 13, color: 'var(--clr-text-muted)', marginBottom: 12 }}>
                     Visited this restaurant? Your review helps everyone else decide.
                   </div>
-                  <a href="/login" className="btn btn-primary btn-sm">Sign In to Write a Review</a>
+                  <Link to="/login" className="btn btn-primary btn-sm">Sign In to Write a Review</Link>
                 </div>
               )}
               {isAuthenticated && filteredReviews.length > 0 && (
@@ -639,6 +691,7 @@ export default function RestaurantPage() {
           </div>
         </div>
       </div>
+      <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
     </div>
   );
 }

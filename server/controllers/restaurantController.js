@@ -16,22 +16,31 @@ export const getRestaurants = async (req, res, next) => {
     let filter = { isActive: true };
     
     if (search) {
+      const rx = { $regex: search, $options: 'i' };
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+        { name:         rx },
+        { description:  rx },
+        { city:         rx },
+        { address:      rx },
+        { cuisineTypes: rx },
+        { tags:         rx },
       ];
     }
-    
+
     if (cuisine) {
       filter.cuisineTypes = { $in: Array.isArray(cuisine) ? cuisine : [cuisine] };
     }
-    
+
     if (city) {
       filter.city = { $regex: city, $options: 'i' };
     }
-    
+
     if (minRating) {
       filter.rating = { $gte: parseFloat(minRating) };
+    }
+
+    if (req.query.priceRange) {
+      filter.priceRange = req.query.priceRange;
     }
 
     // Build sort
@@ -39,11 +48,6 @@ export const getRestaurants = async (req, res, next) => {
     if (sortBy === 'rating')    sort = { rating: -1 };
     if (sortBy === 'price_asc') sort = { averagePrice: 1 };
     if (sortBy === 'newest')    sort = { createdAt: -1 };
-
-    // Price range filter
-    if (req.query.priceRange) {
-      filter.priceRange = req.query.priceRange;
-    }
 
     const total = await Restaurant.countDocuments(filter);
     const restaurants = await Restaurant.find(filter)

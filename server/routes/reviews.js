@@ -5,8 +5,6 @@ import {
   createReview,
   updateReview,
   deleteReview,
-  likeReview,
-  unlikeReview,
   respondToReview
 } from '../controllers/reviewController.js';
 import { validateReview } from '../utils/validators.js';
@@ -27,8 +25,5 @@ router.delete('/:id', authMiddleware, deleteReview);
 // Owner respond to review
 router.post('/:id/respond', authMiddleware, respondToReview);
 
-// Like/Unlike
-router.post('/:id/like', authMiddleware, likeReview);
-router.post('/:id/unlike', authMiddleware, unlikeReview);
 
 export default router;
