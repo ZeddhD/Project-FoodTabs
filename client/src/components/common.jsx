@@ -187,7 +187,7 @@ export const RestaurantCard = ({ restaurant, onClick }) => {
             {restaurant.name}
           </div>
           {restaurant.isVerified && (
-            <span className="tag tag-verified" style={{ flexShrink: 0, fontSize: 10 }}>✓ Verified</span>
+            <span className="tag tag-verified" title="Reviewed and verified by the FoodTabs team" style={{ flexShrink: 0, fontSize: 10, cursor: 'default' }}>✓ FoodTabs Verified</span>
           )}
         </div>
 
@@ -255,10 +255,12 @@ export const RestaurantCard = ({ restaurant, onClick }) => {
    Dish Card
 ───────────────────────────────────────────────────────── */
 export const DishCard = ({ dish, onClick }) => {
+  const di = dish.dietaryInfo || {};
   const dietBadges = [
-    dish.isVegetarian && { label: '🌿 Veg', color: '#10B981' },
-    dish.isVegan     && { label: '🌱 Vegan', color: '#059669' },
-    dish.isSpicy     && { label: '🌶 Spicy', color: '#EF4444' },
+    di.isVegetarian && { label: '🌿 Veg',   color: '#10B981' },
+    di.isVegan      && { label: '🌱 Vegan',  color: '#059669' },
+    di.isSpicy      && { label: '🌶 Spicy',  color: '#EF4444' },
+    di.isGlutenFree && { label: 'GF',        color: '#2563EB' },
   ].filter(Boolean);
 
   return (

@@ -20,7 +20,9 @@ const EditPostPage        = lazy(() => import('./pages/EditPostPage'));
 const BookingPage         = lazy(() => import('./pages/BookingPage'));
 const BookingHistoryPage  = lazy(() => import('./pages/BookingHistoryPage'));
 const PaymentPage         = lazy(() => import('./pages/PaymentPage'));
-const EventBookingPage    = lazy(() => import('./pages/EventBookingPage'));
+const EventBookingPage          = lazy(() => import('./pages/EventBookingPage'));
+const EventBookingsHistoryPage  = lazy(() => import('./pages/EventBookingsHistoryPage'));
+const EventBookingDetailPage    = lazy(() => import('./pages/EventBookingDetailPage'));
 const OwnerDashboard      = lazy(() => import('./pages/OwnerDashboard'));
 const DishManagementPage  = lazy(() => import('./pages/DishManagementPage'));
 const OwnerBookingsPage   = lazy(() => import('./pages/OwnerBookingsPage'));
@@ -168,6 +170,9 @@ function Navbar() {
                         <Link to="/saved-orders" onClick={() => setMenuOpen(false)} style={{ display: 'block', padding: '11px 16px', fontSize: 14, fontWeight: 500, color: 'var(--clr-text)', borderBottom: '1px solid var(--clr-border)' }}>
                           My Usuals
                         </Link>
+                        <Link to="/event-bookings" onClick={() => setMenuOpen(false)} style={{ display: 'block', padding: '11px 16px', fontSize: 14, fontWeight: 500, color: 'var(--clr-text)', borderBottom: '1px solid var(--clr-border)' }}>
+                          Event Bookings
+                        </Link>
                       </>
                     )}
 
@@ -260,6 +265,7 @@ function UserQuickNav() {
         <NavLink to="/recommendations" className={({ isActive }) => `user-nav-link${isActive ? ' active' : ''}`}>✦ For You</NavLink>
         <NavLink to="/saved-orders"    className={({ isActive }) => `user-nav-link${isActive ? ' active' : ''}`}>⊞ My Usuals</NavLink>
         <NavLink to="/bookings"        className={({ isActive }) => `user-nav-link${isActive ? ' active' : ''}`}>📅 Bookings</NavLink>
+        <NavLink to="/event-bookings"  className={({ isActive }) => `user-nav-link${isActive ? ' active' : ''}`}>🎉 Events</NavLink>
         <NavLink to="/profile"         className={({ isActive }) => `user-nav-link${isActive ? ' active' : ''}`}>◉ Profile</NavLink>
       </div>
     </div>
@@ -354,6 +360,8 @@ export default function App() {
               <Route path="/restaurant/:restaurantId/book"  element={<ProtectedRoute customerOnly><BookingPage /></ProtectedRoute>} />
               <Route path="/restaurant/:restaurantId/event" element={<ProtectedRoute customerOnly><EventBookingPage /></ProtectedRoute>} />
               <Route path="/payment/:bookingId"             element={<ProtectedRoute customerOnly><PaymentPage /></ProtectedRoute>} />
+              <Route path="/event-bookings"    element={<ProtectedRoute customerOnly><EventBookingsHistoryPage /></ProtectedRoute>} />
+              <Route path="/event-bookings/:id" element={<ProtectedRoute customerOnly><EventBookingDetailPage /></ProtectedRoute>} />
 
               {/* Owner */}
               <Route path="/owner/dashboard" element={<ProtectedRoute><OwnerDashboard /></ProtectedRoute>} />
