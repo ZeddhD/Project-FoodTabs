@@ -165,17 +165,7 @@ export const RestaurantCard = ({ restaurant, onClick }) => {
   return (
     <div className="restaurant-card" onClick={onClick} role="button" tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onClick?.()}>
-      {/* Cover image */}
-      {restaurant.coverImage ? (
-        <img
-          src={restaurant.coverImage}
-          alt={restaurant.name}
-          className="restaurant-card__img"
-          onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-        />
-      ) : null}
-      <div className="restaurant-card__img-placeholder"
-        style={{ display: restaurant.coverImage ? 'none' : 'flex' }}>
+      <div className="restaurant-card__img-placeholder" style={{ display: 'flex' }}>
         {emoji}
       </div>
 

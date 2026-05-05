@@ -9,6 +9,15 @@ export const getDishes = async (req, res, next) => {
     const { restaurantId } = req.params;
     const { category, isAvailable } = req.query;
 
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) return sendError(res, 404, 'Restaurant not found');
+
+    const isOwner = req.user?.userId === restaurant.ownerId?.toString();
+    const isAdmin = req.user?.role === 'admin';
+    if ((!restaurant.isActive || !restaurant.isVerified) && !isOwner && !isAdmin) {
+      return sendError(res, 404, 'Restaurant not found');
+    }
+
     let filter = { restaurantId };
     if (category) filter.category = category;
     if (isAvailable !== undefined) filter.isAvailable = isAvailable === 'true';
@@ -23,8 +32,16 @@ export const getDishes = async (req, res, next) => {
 export const getDishById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const dish = await Dish.findById(id).populate('restaurantId', 'name rating city priceRange cuisineTypes isVerified');
+    const dish = await Dish.findById(id).populate('restaurantId', 'name rating city priceRange cuisineTypes isVerified isActive ownerId');
     if (!dish) return sendError(res, 404, 'Dish not found');
+
+    const restaurant = dish.restaurantId;
+    const isOwner = req.user?.userId === restaurant.ownerId?.toString();
+    const isAdmin = req.user?.role === 'admin';
+    if ((!restaurant.isActive || !restaurant.isVerified) && !isOwner && !isAdmin) {
+      return sendError(res, 404, 'Dish not found');
+    }
+
     sendResponse(res, 200, true, 'Dish details fetched', dish);
   } catch (error) {
     next(error);
@@ -70,19 +87,57 @@ export const getDishReviews = async (req, res, next) => {
 export const searchDishes = async (req, res, next) => {
   try {
     const { q, limit = 6 } = req.query;
-    if (!q || q.trim().length < 2) return sendResponse(res, 200, true, 'Dishes fetched', []);
+    const search = q?.trim();
+    if (!search || search.length < 2) return sendResponse(res, 200, true, 'Dishes fetched', []);
 
-    const dishes = await Dish.find(
-      { $text: { $search: q }, isAvailable: true },
-      { score: { $meta: 'textScore' } }
-    )
-      .sort({ score: { $meta: 'textScore' }, reviewsCount: -1 })
-      .limit(parseInt(limit))
-      .populate('restaurantId', 'name city rating priceRange isActive');
+    const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(safeSearch, 'i');
 
-    // Only return dishes from active restaurants
-    const active = dishes.filter(d => d.restaurantId?.isActive !== false);
-    sendResponse(res, 200, true, 'Dishes fetched', active);
+    const dishes = await Dish.aggregate([
+      { $match: { isAvailable: true } },
+      {
+        $lookup: {
+          from: 'restaurants',
+          localField: 'restaurantId',
+          foreignField: '_id',
+          as: 'restaurant'
+        }
+      },
+      { $unwind: '$restaurant' },
+      {
+        $match: {
+          'restaurant.isActive': { $ne: false },
+          'restaurant.isVerified': true,
+          $or: [
+            { name: regex },
+            { description: regex },
+            { category: regex },
+            { 'restaurant.name': regex },
+            { 'restaurant.city': regex },
+            { 'restaurant.cuisineTypes': regex },
+            { 'restaurant.tags': regex }
+          ]
+        }
+      },
+      { $sort: { reviewsCount: -1, name: 1 } },
+      { $limit: parseInt(limit) },
+      {
+        $project: {
+          name: 1,
+          description: 1,
+          category: 1,
+          price: 1,
+          rating: 1,
+          reviewsCount: 1,
+          isAvailable: 1,
+          dietaryInfo: 1,
+          images: 1,
+          restaurantId: '$restaurant'
+        }
+      }
+    ]);
+
+    sendResponse(res, 200, true, 'Dishes fetched', dishes);
   } catch (error) {
     next(error);
   }

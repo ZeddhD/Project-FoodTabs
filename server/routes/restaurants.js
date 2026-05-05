@@ -10,13 +10,13 @@ import {
   getAllReviewsForRestaurant
 } from '../controllers/restaurantController.js';
 import { validateRestaurant } from '../utils/validators.js';
-import { authMiddleware, roleMiddleware } from '../middleware/auth.js';
+import { authMiddleware, optionalAuthMiddleware, roleMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Public routes
 router.get('/', getRestaurants);
-router.get('/:id', getRestaurantById);
+router.get('/:id', optionalAuthMiddleware, getRestaurantById);
 
 // Protected routes - Owner
 router.post('/', authMiddleware, roleMiddleware('owner', 'admin'), validateRestaurant, createRestaurant);

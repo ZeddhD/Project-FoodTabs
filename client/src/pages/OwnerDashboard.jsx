@@ -89,6 +89,20 @@ export default function OwnerDashboard() {
   const [verifLoading, setVerifLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [createMessage, setCreateMessage] = useState(null);
+  const [creationData, setCreationData] = useState({
+    name: '',
+    description: '',
+    cuisineTypesText: '',
+    address: '',
+    city: '',
+    phone: '',
+    email: '',
+    website: '',
+    averagePrice: '',
+    priceRange: '$$',
+  });
 
   useEffect(() => { fetchDashboardData(); }, []);
 
@@ -117,6 +131,56 @@ export default function OwnerDashboard() {
       setError('Failed to load dashboard data. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreationChange = (field) => (e) => {
+    setCreationData(prev => ({ ...prev, [field]: e.target.value }));
+    setCreateMessage(null);
+    setError(null);
+  };
+
+  const handleCreateRestaurant = async () => {
+    const cuisines = creationData.cuisineTypesText
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean);
+
+    if (!creationData.name.trim() || !creationData.address.trim() || cuisines.length === 0) {
+      setError('Restaurant name, address, and cuisine types are required.');
+      return;
+    }
+
+    setCreating(true);
+    setError(null);
+    setCreateMessage(null);
+
+    try {
+      const payload = {
+        name: creationData.name.trim(),
+        description: creationData.description.trim(),
+        cuisineTypes: cuisines,
+        address: creationData.address.trim(),
+        city: creationData.city.trim(),
+        phone: creationData.phone.trim(),
+        email: creationData.email.trim(),
+        website: creationData.website.trim(),
+        averagePrice: creationData.averagePrice ? parseFloat(creationData.averagePrice) : undefined,
+        priceRange: creationData.priceRange,
+        openingHours: {},
+        bookingDeposit: 0
+      };
+
+      const res = await restaurantAPI.create(payload);
+      const createdRestaurant = res.data.data;
+      setRestaurant(createdRestaurant);
+      const verifRes = await verificationAPI.getForRestaurant(createdRestaurant._id);
+      setVerificationReq(verifRes.data.data || null);
+      setCreateMessage('Restaurant created. Click Request Verification when you are ready for admin approval.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create restaurant. Please try again.');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -151,10 +215,97 @@ export default function OwnerDashboard() {
 
   if (!restaurant) {
     return (
-      <div className="empty-state">
-        <div className="empty-state__icon">🍽️</div>
-        <div className="empty-state__title">You don't have a restaurant yet</div>
-        <div className="empty-state__desc">List your restaurant to start receiving reviews and bookings.</div>
+      <div style={{ maxWidth: 820, margin: '60px auto', padding: '0 24px' }}>
+        <div style={{ marginBottom: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 36, marginBottom: 14 }}>🍽️</div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, margin: 0 }}>Create Your Restaurant Listing</h1>
+          <p style={{ margin: '12px auto 0', maxWidth: 560, color: 'var(--clr-text-muted)', fontSize: 14 }}>
+            Set up your restaurant after creating your owner account. Once the listing is created, submit it for admin verification so customers can see it.
+          </p>
+        </div>
+
+        {error && (
+          <div style={{ padding: 16, background: '#FEE2E2', color: '#B91C1C', borderRadius: 'var(--r-md)', marginBottom: 20 }}>
+            {error}
+          </div>
+        )}
+
+        {createMessage && (
+          <div style={{ padding: 16, background: '#DCFCE7', color: '#166534', borderRadius: 'var(--r-md)', marginBottom: 20 }}>
+            {createMessage}
+          </div>
+        )}
+
+        <div style={{ background: 'white', border: '1px solid var(--clr-border)', borderRadius: 'var(--r-lg)', padding: 28 }}>
+          <div style={{ display: 'grid', gap: 20 }}>
+            <div>
+              <label className="form-label">Restaurant Name</label>
+              <input className="form-input" value={creationData.name} onChange={handleCreationChange('name')} placeholder="e.g. Star Kacchi House" />
+            </div>
+
+            <div>
+              <label className="form-label">Address</label>
+              <input className="form-input" value={creationData.address} onChange={handleCreationChange('address')} placeholder="e.g. Road 7, Dhanmondi" />
+            </div>
+
+            <div>
+              <label className="form-label">Cuisine Types</label>
+              <input className="form-input" value={creationData.cuisineTypesText} onChange={handleCreationChange('cuisineTypesText')} placeholder="e.g. Bangladeshi, BBQ, Street Food" />
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--clr-text-muted)' }}>Separate multiple cuisines with commas.</p>
+            </div>
+
+            <div>
+              <label className="form-label">Description</label>
+              <textarea className="form-input" rows={4} value={creationData.description} onChange={handleCreationChange('description')} placeholder="A short description of your restaurant." />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label className="form-label">Phone</label>
+                <input className="form-input" value={creationData.phone} onChange={handleCreationChange('phone')} placeholder="e.g. +880 1234 567890" />
+              </div>
+              <div>
+                <label className="form-label">Email</label>
+                <input className="form-input" value={creationData.email} onChange={handleCreationChange('email')} placeholder="e.g. info@restaurant.com" />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label className="form-label">City</label>
+                <input className="form-input" value={creationData.city} onChange={handleCreationChange('city')} placeholder="e.g. Dhaka" />
+              </div>
+              <div>
+                <label className="form-label">Website</label>
+                <input className="form-input" value={creationData.website} onChange={handleCreationChange('website')} placeholder="Optional website URL" />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label className="form-label">Average Price</label>
+                <input className="form-input" type="number" min="0" value={creationData.averagePrice} onChange={handleCreationChange('averagePrice')} placeholder="e.g. 450" />
+              </div>
+              <div>
+                <label className="form-label">Price Range</label>
+                <select className="form-input" value={creationData.priceRange} onChange={handleCreationChange('priceRange')}>
+                  <option value="$">$</option>
+                  <option value="$$">$$</option>
+                  <option value="$$$">$$$</option>
+                  <option value="$$$$">$$$$</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              className="btn btn-primary"
+              onClick={handleCreateRestaurant}
+              disabled={creating}
+            >
+              {creating ? 'Creating…' : 'Create Restaurant Listing'}
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -177,6 +328,11 @@ export default function OwnerDashboard() {
           <div style={{ fontSize: 13, color: 'var(--clr-text-muted)', marginTop: 4 }}>
             📍 {restaurant.address}{restaurant.city ? `, ${restaurant.city}` : ''}
           </div>
+          {!restaurant.isVerified && (
+            <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 'var(--r-md)', background: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D', fontSize: 13 }}>
+              Your restaurant is not yet verified. It will remain hidden from customers until an admin approves the listing.
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {restaurant.isVerified && (
@@ -207,7 +363,7 @@ export default function OwnerDashboard() {
                 <div>
                   <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--clr-text-muted)' }}>
                     A <strong>FoodTabs Verified</strong> badge shows on your restaurant listing and increases customer trust.
-                    Our team reviews your listing within 1–3 business days. No documents needed — we verify based on listing completeness and review history.
+                    Once approved, your restaurant and menu will appear in customer search results and recommendations.
                   </p>
                   <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--clr-text-muted)', flexWrap: 'wrap' }}>
                     <span>✓ Verified badge on your profile</span>

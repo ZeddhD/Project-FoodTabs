@@ -33,6 +33,27 @@ export const authMiddleware = async (req, res, next) => {
   }
 };
 
+export const optionalAuthMiddleware = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return next();
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId).select('isBanned banReason').lean();
+    if (user?.isBanned) {
+      return res.status(403).json({
+        success: false,
+        message: `Your account has been suspended. Reason: ${user.banReason || 'Violation of platform policies'}`
+      });
+    }
+
+    req.user = decoded;
+  } catch (error) {
+    // Invalid token is treated as unauthenticated for public access.
+  }
+  next();
+};
+
 // Aliases used by route files that follow the protect/roleCheck naming convention
 export const protect = authMiddleware;
 

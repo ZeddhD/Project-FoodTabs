@@ -23,6 +23,10 @@ export const createVerificationRequest = async (req, res, next) => {
       return sendError(res, 403, 'Only restaurant owner can create verification request');
     }
 
+    if (restaurant.isVerified) {
+      return sendError(res, 400, 'Restaurant is already verified');
+    }
+
     // Check if verification already exists and is pending
     const existingRequest = await VerificationRequest.findOne({
       restaurantId,
@@ -186,10 +190,10 @@ export const approveVerificationRequest = async (req, res, next) => {
       { new: true }
     ).populate('restaurantId', 'name').populate('ownerId', 'name email');
 
-    // Update restaurant verification status
+    // Update restaurant verification status and publish it to customers
     await Restaurant.findByIdAndUpdate(
       verificationRequest.restaurantId,
-      { isVerified: true, verificationDate: Date.now() }
+      { isVerified: true, isActive: true, verificationDate: Date.now() }
     );
 
     // Notify the owner

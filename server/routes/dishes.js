@@ -9,7 +9,7 @@ import {
   deleteDish
 } from '../controllers/dishController.js';
 import { validateDish } from '../utils/validators.js';
-import { authMiddleware, roleMiddleware } from '../middleware/auth.js';
+import { authMiddleware, optionalAuthMiddleware, roleMiddleware } from '../middleware/auth.js';
 
 const router = express.Router({ mergeParams: true });
 
@@ -17,8 +17,8 @@ const router = express.Router({ mergeParams: true });
 router.get('/search', searchDishes);
 
 // Public routes
-router.get('/', getDishes);
-router.get('/:id', getDishById);
+router.get('/', optionalAuthMiddleware, getDishes);
+router.get('/:id', optionalAuthMiddleware, getDishById);
 router.get('/:id/reviews', getDishReviews);
 
 // Protected routes

@@ -13,7 +13,7 @@ export const getRestaurants = async (req, res, next) => {
     const { skip, limitNum } = getPaginationParams(page, limit);
 
     // Build filter
-    let filter = { isActive: true };
+    let filter = { isActive: true, isVerified: true };
     
     if (search) {
       const rx = { $regex: search, $options: 'i' };
@@ -98,6 +98,12 @@ export const getRestaurantById = async (req, res, next) => {
       return sendError(res, 404, 'Restaurant not found');
     }
 
+    const isOwner = req.user?.userId === restaurant.ownerId?._id.toString();
+    const isAdmin = req.user?.role === 'admin';
+    if ((!restaurant.isActive || !restaurant.isVerified) && !isOwner && !isAdmin) {
+      return sendError(res, 404, 'Restaurant not found');
+    }
+
     // Increment views count
     await Restaurant.findByIdAndUpdate(id, { $inc: { viewsCount: 1 } });
 
@@ -145,7 +151,9 @@ export const createRestaurant = async (req, res, next) => {
       bookingDeposit: bookingDeposit || 0,
       ownerId: req.user.userId,
       images: [],
-      coverImage: '/default-restaurant.jpg'
+      coverImage: '/default-restaurant.jpg',
+      isVerified: false,
+      isActive: false
     });
 
     await restaurant.save();

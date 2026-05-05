@@ -97,6 +97,12 @@ export default function DishManagementPage() {
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 60px' }}>
 
+      {restaurant && !restaurant.isVerified && (
+        <div style={{ marginBottom: 20, padding: '18px 20px', borderRadius: 'var(--r-lg)', background: '#FEF3C7', border: '1px solid #FBBF24', color: '#92400E' }}>
+          <strong>Verification pending:</strong> Your restaurant is not yet approved for customer listings. You can still prepare your menu here, but it will remain hidden until an admin verifies your restaurant.
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div>

@@ -38,6 +38,7 @@ const restaurantSchema = new mongoose.Schema({
     value:    { type: Number, default: 0 },
   },
   verifiedReviewsCount: { type: Number, default: 0 },
+  verificationDate: { type: Date },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
