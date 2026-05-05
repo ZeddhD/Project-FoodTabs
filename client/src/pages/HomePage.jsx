@@ -163,7 +163,7 @@ export default function HomePage() {
               <input
                 type="text"
                 className="search-bar__input"
-                placeholder="Search restaurants, cuisines, cities..."
+                placeholder="Search by name, cuisine, area or dish..."
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
               />
@@ -232,7 +232,16 @@ export default function HomePage() {
           </div>
 
           <div style={{ fontSize: 13, color: 'var(--clr-text-muted)' }}>
-            {loading ? '' : `${total} restaurant${total !== 1 ? 's' : ''} found`}
+            {loading ? '' : (
+              <>
+                {`${total} restaurant${total !== 1 ? 's' : ''} found`}
+                {search && !dishLoading && dishResults.length > 0 && (
+                  <span style={{ marginLeft: 8, color: 'var(--clr-primary)', fontWeight: 600 }}>
+                    · {dishResults.length} dish{dishResults.length !== 1 ? 'es' : ''} matched
+                  </span>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -242,17 +251,21 @@ export default function HomePage() {
             {Array.from({ length: 8 }).map((_, i) => <SkeletonRestaurantCard key={i} />)}
           </div>
         ) : restaurants.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state__icon">🍽️</div>
-            <div className="empty-state__title">No restaurants found</div>
-            <div className="empty-state__desc">Try adjusting your search or filters.</div>
-            {(search || cuisine || minRating || priceRange) && (
+          <div style={{ padding: '24px', borderRadius: 'var(--r-lg)', background: 'var(--clr-bg-2)', border: '1px solid var(--clr-border)', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: 'var(--clr-text-muted)', marginBottom: search && dishResults.length > 0 ? 0 : 12 }}>
+              No restaurants matched
+              {search ? ` "${search}"` : ''}.
+              {search && dishResults.length > 0
+                ? ' See dish results below.'
+                : ' Try adjusting your search or filters.'}
+            </div>
+            {!(search && dishResults.length > 0) && (search || cuisine || minRating || priceRange) && (
               <button
-                className="btn btn-primary"
-                style={{ marginTop: 16 }}
+                className="btn btn-ghost btn-sm"
+                style={{ marginTop: 10 }}
                 onClick={() => { setSearch(''); setSearchInput(''); setCuisine(''); setMinRating(''); setPriceRange(''); setSortBy(''); setPage(1); setDishResults([]); }}
               >
-                Clear Filters
+                ✕ Clear Filters
               </button>
             )}
           </div>

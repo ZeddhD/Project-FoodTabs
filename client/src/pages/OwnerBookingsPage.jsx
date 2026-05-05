@@ -309,6 +309,16 @@ export default function OwnerBookingsPage() {
                         {isUpdating ? '...' : 'Confirm'}
                       </button>
                     )}
+                    {statusKey === 'confirmed' && (
+                      <button
+                        className="btn btn-sm"
+                        style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}
+                        disabled={isUpdating}
+                        onClick={() => handleUpdateStatus(booking, 'completed')}
+                      >
+                        {isUpdating ? '...' : 'Mark Completed'}
+                      </button>
+                    )}
                     <button
                       className="btn btn-danger btn-sm"
                       disabled={isUpdating}

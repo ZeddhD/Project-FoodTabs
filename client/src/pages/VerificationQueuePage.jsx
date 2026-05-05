@@ -4,6 +4,20 @@ import { useAuthStore } from '../context/store.js';
 import { verificationAPI } from '../services/api.js';
 
 function VerificationCard({ req, onApprove, onReject, loading }) {
+  const [pendingAction, setPendingAction] = useState(null); // 'approve' | 'reject'
+  const [notes, setNotes] = useState('');
+
+  const handleConfirm = () => {
+    if (pendingAction === 'approve') {
+      onApprove(req._id, notes || 'Verified and approved');
+    } else {
+      if (!notes.trim()) return;
+      onReject(req._id, notes);
+    }
+    setPendingAction(null);
+    setNotes('');
+  };
+
   const statusColors = { pending: '#D97706', approved: '#059669', rejected: '#DC2626' };
   const statusColor = statusColors[req.status] || '#666';
 
@@ -57,7 +71,7 @@ function VerificationCard({ req, onApprove, onReject, loading }) {
           )}
         </div>
 
-        {req.status === 'pending' && (
+        {req.status === 'pending' && !pendingAction && (
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <Link
               to={`/restaurant/${req.restaurantId?._id}`}
@@ -66,23 +80,40 @@ function VerificationCard({ req, onApprove, onReject, loading }) {
             >
               View Page
             </Link>
-            <button
-              onClick={() => onApprove(req._id)}
-              disabled={loading}
-              style={{ padding: '7px 16px', background: '#059669', color: 'white', border: 'none', borderRadius: 'var(--r-sm)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-            >
+            <button onClick={() => setPendingAction('approve')} disabled={loading} style={{ padding: '7px 16px', background: '#059669', color: 'white', border: 'none', borderRadius: 'var(--r-sm)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               Approve
             </button>
-            <button
-              onClick={() => onReject(req._id)}
-              disabled={loading}
-              style={{ padding: '7px 14px', background: '#DC2626', color: 'white', border: 'none', borderRadius: 'var(--r-sm)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-            >
+            <button onClick={() => setPendingAction('reject')} disabled={loading} style={{ padding: '7px 14px', background: '#DC2626', color: 'white', border: 'none', borderRadius: 'var(--r-sm)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               Reject
             </button>
           </div>
         )}
       </div>
+
+      {pendingAction && (
+        <div style={{ marginTop: 14, padding: '12px 14px', background: pendingAction === 'approve' ? '#F0FDF4' : '#FEF2F2', borderRadius: 'var(--r-md)', border: `1px solid ${pendingAction === 'approve' ? '#BBF7D0' : '#FECACA'}` }}>
+          <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: pendingAction === 'approve' ? '#059669' : '#DC2626' }}>
+            {pendingAction === 'approve' ? 'Approve — add a note (optional)' : 'Reject — enter reason *'}
+          </p>
+          <input
+            type="text"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder={pendingAction === 'approve' ? 'e.g. Verified and approved' : 'e.g. Documents not sufficient'}
+            className="form-input"
+            style={{ fontSize: 12, marginBottom: 8 }}
+            autoFocus
+          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleConfirm} disabled={loading || (pendingAction === 'reject' && !notes.trim())} className="btn btn-sm" style={{ background: pendingAction === 'approve' ? '#059669' : '#DC2626', color: 'white', border: 'none' }}>
+              {loading ? '...' : 'Confirm'}
+            </button>
+            <button onClick={() => { setPendingAction(null); setNotes(''); }} className="btn btn-ghost btn-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -114,26 +145,25 @@ export default function VerificationQueuePage() {
     } finally { setLoading(false); }
   };
 
-  const handleApprove = async (id) => {
-    const notes = window.prompt('Admin notes (optional):') || 'Verified and approved';
+  const handleApprove = async (id, notes) => {
     setActionLoading(true);
     try {
       await verificationAPI.approve(id, { adminNotes: notes });
       setRequests(prev => prev.map(r => r._id === id ? { ...r, status: 'approved', adminNotes: notes } : r));
+      setError(null);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to approve');
+      setError(err.response?.data?.message || 'Failed to approve request.');
     } finally { setActionLoading(false); }
   };
 
-  const handleReject = async (id) => {
-    const reason = window.prompt('Rejection reason:');
-    if (!reason?.trim()) return;
+  const handleReject = async (id, reason) => {
     setActionLoading(true);
     try {
       await verificationAPI.reject(id, { rejectionReason: reason });
       setRequests(prev => prev.map(r => r._id === id ? { ...r, status: 'rejected', adminNotes: reason } : r));
+      setError(null);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to reject');
+      setError(err.response?.data?.message || 'Failed to reject request.');
     } finally { setActionLoading(false); }
   };
 

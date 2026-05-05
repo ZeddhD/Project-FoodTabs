@@ -127,7 +127,7 @@ export default function OwnerDashboard() {
       const res = await verificationAPI.create({ restaurantId: restaurant._id });
       setVerificationReq(res.data.data);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to submit verification request');
+      setError(err.response?.data?.message || 'Failed to submit verification request.');
     } finally {
       setVerifLoading(false);
     }
@@ -204,19 +204,37 @@ export default function OwnerDashboard() {
                 Restaurant Verification
               </div>
               {!verificationReq && (
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--clr-text-muted)' }}>
-                  Get a verified badge to build trust with customers. Verified restaurants appear higher in search results.
-                </p>
+                <div>
+                  <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--clr-text-muted)' }}>
+                    A <strong>FoodTabs Verified</strong> badge shows on your restaurant listing and increases customer trust.
+                    Our team reviews your listing within 1–3 business days. No documents needed — we verify based on listing completeness and review history.
+                  </p>
+                  <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--clr-text-muted)', flexWrap: 'wrap' }}>
+                    <span>✓ Verified badge on your profile</span>
+                    <span>✓ Priority in search results</span>
+                    <span>✓ Builds customer confidence</span>
+                  </div>
+                </div>
               )}
               {verificationReq?.status === 'pending' && (
-                <p style={{ margin: 0, fontSize: 13, color: '#D97706', fontWeight: 600 }}>
-                  ⏳ Verification request pending — admin review in progress.
-                </p>
+                <div>
+                  <p style={{ margin: '0 0 4px', fontSize: 13, color: '#D97706', fontWeight: 600 }}>
+                    ⏳ Request submitted — admin review in progress.
+                  </p>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--clr-text-muted)' }}>
+                    This usually takes 1–3 business days. You'll receive a notification with the result.
+                  </p>
+                </div>
               )}
               {verificationReq?.status === 'rejected' && (
-                <p style={{ margin: 0, fontSize: 13, color: '#DC2626' }}>
-                  Request rejected: {verificationReq.rejectionReason || 'Please contact support for details.'}
-                </p>
+                <div>
+                  <p style={{ margin: '0 0 4px', fontSize: 13, color: '#DC2626', fontWeight: 600 }}>
+                    ✗ Request not approved
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--clr-text-muted)' }}>
+                    Reason: {verificationReq.rejectionReason || 'No reason provided. Please ensure your restaurant profile is complete before resubmitting.'}
+                  </p>
+                </div>
               )}
             </div>
             {!verificationReq && (

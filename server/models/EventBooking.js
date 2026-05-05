@@ -12,7 +12,7 @@ const eventBookingSchema = new mongoose.Schema({
   estimatedBudget: { type: Number },
   description: { type: String },
   specialRequirements: { type: String },
-  status: { type: String, enum: ['pending', 'confirmed', 'cancelled'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
   confirmationCode: { type: String, unique: true },
   paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
   createdAt: { type: Date, default: Date.now },

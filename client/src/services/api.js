@@ -44,7 +44,7 @@ export const restaurantAPI = {
 export const dishAPI = {
   getAll: (restaurantId, params) => api.get(`/restaurants/${restaurantId}/dishes`, { params }),
   getById: (id) => api.get(`/dishes/${id}`),
-  getReviews: (restaurantId, dishId, params) => api.get(`/restaurants/${restaurantId}/dishes/${dishId}/reviews`, { params }),
+  getReviews: (restaurantId, dishId, params) => api.get('/reviews', { params: { restaurantId, dishId, ...params } }),
   search: (q, limit = 6) => api.get('/dishes/search', { params: { q, limit } }),
   create: (restaurantId, data) => api.post(`/restaurants/${restaurantId}/dishes`, data),
   update: (id, data) => api.put(`/dishes/${id}`, data),
@@ -58,9 +58,7 @@ export const reviewAPI = {
   create: (data) => api.post('/reviews', data),
   update: (id, data) => api.put(`/reviews/${id}`, data),
   delete: (id) => api.delete(`/reviews/${id}`),
-  respond: (id, response) => api.post(`/reviews/${id}/respond`, { response }),
-  like: (id) => api.post(`/reviews/${id}/like`),
-  unlike: (id) => api.post(`/reviews/${id}/unlike`)
+  respond: (id, response) => api.post(`/reviews/${id}/respond`, { response })
 };
 
 // Notification API calls
@@ -94,6 +92,9 @@ export const forumAPI = {
   createComment: (postId, data) => api.post(`/forum/posts/${postId}/comments`, data),
   updateComment: (commentId, data) => api.put(`/forum/comments/${commentId}`, data),
   deleteComment: (commentId) => api.delete(`/forum/comments/${commentId}`),
+
+  // Replies
+  getReplies: (commentId) => api.get(`/forum/comments/${commentId}/replies`),
 
   // Reports
   reportContent: (data) => api.post('/reports', data)

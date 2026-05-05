@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '../context/store';
 import { reviewAPI, bookingAPI, favoriteAPI } from '../services/api';
 import UserProfileForm from '../components/UserProfileForm';
@@ -183,7 +184,7 @@ export default function UserProfilePage() {
                 <div className="empty-state__desc">
                   Every restaurant you visit is an opportunity to help someone else make a better decision.
                 </div>
-                <a href="/" className="btn btn-primary" style={{ marginTop: 16 }}>Discover Restaurants</a>
+                <Link to="/" className="btn btn-primary" style={{ marginTop: 16 }}>Discover Restaurants</Link>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
