@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../context/store';
 import { forumAPI } from '../services/api';
 import VoteButtons from './VoteButtons';
 import { StarRating } from './common';
+import ReportModal from './ReportModal';
 
 const CATEGORY_COLORS = {
   'Best in City':      { bg: '#FFF3EC', color: '#E8460B' },
@@ -15,6 +17,7 @@ const CATEGORY_COLORS = {
 
 export default function PostCard({ post, onDelete, onUpdate }) {
   const { isAuthenticated, user } = useAuthStore();
+  const [reportTarget, setReportTarget] = useState(null);
 
   const authorName  = post.userId?.name || 'Anonymous';
   const initial     = authorName[0]?.toUpperCase() || '?';
@@ -63,12 +66,23 @@ export default function PostCard({ post, onDelete, onUpdate }) {
             }}>{post.category}</span>
           )}
         </div>
-        {isAuthenticated && (isOwn || user?.role === 'admin') && (
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <Link to={`/forum/${post._id}/edit`} className="btn btn-ghost btn-sm">Edit</Link>
-            <button onClick={handleDelete} className="btn btn-danger btn-sm">Delete</button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {isAuthenticated && !isOwn && user?.role !== 'admin' && (
+            <button
+              onClick={() => setReportTarget({ type: 'post', id: post._id })}
+              className="btn btn-ghost btn-sm"
+              style={{ color: 'var(--clr-text-muted)' }}
+            >
+              Flag
+            </button>
+          )}
+          {isAuthenticated && (isOwn || user?.role === 'admin') && (
+            <>
+              <Link to={`/forum/${post._id}/edit`} className="btn btn-ghost btn-sm">Edit</Link>
+              <button onClick={handleDelete} className="btn btn-danger btn-sm">Delete</button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Restaurant tag with rating */}
@@ -154,6 +168,7 @@ export default function PostCard({ post, onDelete, onUpdate }) {
           Read →
         </Link>
       </div>
+      <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
     </div>
   );
 }

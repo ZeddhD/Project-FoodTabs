@@ -131,6 +131,16 @@ export const getComments = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+export const getReplies = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const replies = await Comment.find({ parentCommentId: id })
+      .sort({ createdAt: 1 })
+      .populate('userId', 'name avatar');
+    sendResponse(res, 200, true, 'Replies fetched', replies);
+  } catch (error) { next(error); }
+};
+
 export const createComment = async (req, res, next) => {
   try {
     // postId comes from URL param (nested route) or body
@@ -194,13 +204,3 @@ export const deleteComment = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-export const likeComment = async (req, res, next) => {
-  try {
-    const comment = await Comment.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { likeCount: 1 } },
-      { new: true }
-    );
-    sendResponse(res, 200, true, 'Comment liked', comment);
-  } catch (error) { next(error); }
-};

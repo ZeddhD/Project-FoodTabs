@@ -2,43 +2,41 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { restaurantAPI, eventBookingAPI } from '../services/api';
 
+const EVENT_TYPES = ['Birthday', 'Wedding', 'Corporate', 'Anniversary', 'Celebration', 'Conference', 'Other'];
+
+const labelStyle = { display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--clr-dark)' };
+
 export default function EventBookingPage() {
   const { restaurantId } = useParams();
   const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [error, setError]           = useState(null);
+  const [success, setSuccess]       = useState(false);
 
   const [formData, setFormData] = useState({
-    eventName: '',
-    eventType: 'Birthday',
-    eventDate: '',
-    eventTime: '18:00',
-    duration: 120,
-    guestCount: 10,
-    estimatedBudget: '',
-    description: '',
+    eventName:           '',
+    eventType:           'Birthday',
+    eventDate:           '',
+    eventTime:           '18:00',
+    duration:            120,
+    guestCount:          10,
+    estimatedBudget:     '',
+    description:         '',
     specialRequirements: ''
   });
 
-  const eventTypes = ['Birthday', 'Wedding', 'Corporate', 'Anniversary', 'Celebration', 'Conference', 'Other'];
-
   useEffect(() => {
-    if (restaurantId) {
-      fetchRestaurant();
-    }
+    if (restaurantId) fetchRestaurant();
   }, [restaurantId]);
 
   const fetchRestaurant = async () => {
     try {
       setLoading(true);
-      const response = await restaurantAPI.getById(restaurantId);
-      setRestaurant(response.data.data);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching restaurant:', err);
+      const res = await restaurantAPI.getById(restaurantId);
+      setRestaurant(res.data.data?.restaurant || res.data.data);
+    } catch {
       setError('Failed to load restaurant details.');
     } finally {
       setLoading(false);
@@ -49,40 +47,27 @@ export default function EventBookingPage() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'guestCount' || name === 'duration' || name === 'estimatedBudget' 
-        ? parseInt(value) || value 
+      [name]: ['guestCount', 'duration', 'estimatedBudget'].includes(name)
+        ? (parseInt(value) || value)
         : value
     }));
+    setError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!formData.eventName || !formData.eventDate || !formData.guestCount) {
-      setError('Please fill in all required fields');
+      setError('Please fill in all required fields.');
       return;
     }
-
     try {
       setSubmitting(true);
       setError(null);
-
-      const bookingData = {
-        restaurantId,
-        ...formData
-      };
-
-      const response = await eventBookingAPI.create(bookingData);
-      const booking = response.data.data;
-
-      setSuccess('Event booking created successfully!');
-      sessionStorage.setItem('eventBooking', JSON.stringify(booking));
-      
-      setTimeout(() => {
-        navigate(`/event-bookings/${booking._id}`);
-      }, 1500);
+      const res = await eventBookingAPI.create({ restaurantId, ...formData });
+      const booking = res.data.data;
+      setSuccess(true);
+      setTimeout(() => navigate(`/event-bookings/${booking._id}`), 1500);
     } catch (err) {
-      console.error('Error creating booking:', err);
       setError(err.response?.data?.message || 'Failed to create event booking. Please try again.');
     } finally {
       setSubmitting(false);
@@ -91,300 +76,148 @@ export default function EventBookingPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: '24px', textAlign: 'center', color: '#999' }}>
-        ⏳ Loading restaurant...
+      <div style={{ maxWidth: 800, margin: '60px auto', padding: '0 24px', textAlign: 'center' }}>
+        <div className="spinner" />
       </div>
     );
   }
 
   if (error && !restaurant) {
     return (
-      <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{
-          padding: '16px',
-          background: '#ffebee',
-          color: '#c62828',
-          borderRadius: '4px',
-          marginBottom: '16px'
-        }}>
+      <div style={{ maxWidth: 800, margin: '40px auto', padding: '0 24px' }}>
+        <div style={{ padding: '14px 16px', background: '#FEE2E2', color: '#DC2626', borderRadius: 'var(--r-md)', marginBottom: 16, fontSize: 14 }}>
           {error}
         </div>
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            padding: '8px 16px',
-            background: '#2196F3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: '500'
-          }}
-        >
-          Back to Home
-        </button>
+        <button onClick={() => navigate('/')} className="btn btn-primary btn-sm">Back to Home</button>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px 60px' }}>
+
       {/* Header */}
-      <button
-        onClick={() => navigate(-1)}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: '#2196F3',
-          fontSize: '14px',
-          cursor: 'pointer',
-          marginBottom: '24px',
-          fontWeight: '500'
-        }}
-      >
+      <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm" style={{ marginBottom: 20 }}>
         ← Back
       </button>
 
-      <h2 style={{ marginBottom: '24px', fontSize: '28px', fontWeight: 'bold' }}>
-        Plan Your Event at {restaurant?.name}
-      </h2>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--clr-primary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+          Event Booking
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 900, margin: 0 }}>
+          Plan Your Event at {restaurant?.name}
+        </h1>
+        {restaurant?.address && (
+          <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--clr-text-muted)' }}>
+            📍 {restaurant.address}{restaurant.city ? `, ${restaurant.city}` : ''}
+          </p>
+        )}
+      </div>
 
-      {/* Error Message */}
       {error && (
-        <div style={{
-          padding: '12px',
-          background: '#ffebee',
-          color: '#c62828',
-          borderRadius: '4px',
-          marginBottom: '16px',
-          fontSize: '14px'
-        }}>
-          ❌ {error}
+        <div style={{ padding: '12px 16px', background: '#FEE2E2', color: '#DC2626', borderRadius: 'var(--r-md)', marginBottom: 20, fontSize: 13 }}>
+          {error}
         </div>
       )}
 
-      {/* Success Message */}
       {success && (
-        <div style={{
-          padding: '12px',
-          background: '#e8f5e9',
-          color: '#2e7d32',
-          borderRadius: '4px',
-          marginBottom: '16px',
-          fontSize: '14px'
-        }}>
-          ✅ {success}
+        <div style={{ padding: '14px 16px', background: '#DCFCE7', color: '#16A34A', borderRadius: 'var(--r-md)', marginBottom: 20, fontSize: 13, fontWeight: 600 }}>
+          ✓ Event booking created! Redirecting…
         </div>
       )}
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} style={{
-        background: '#fafafa',
-        padding: '24px',
-        borderRadius: '8px',
-        border: '1px solid #e0e0e0'
-      }}>
+      <form onSubmit={handleSubmit} style={{ background: 'white', borderRadius: 'var(--r-lg)', border: '1px solid var(--clr-border)', padding: '28px', boxShadow: 'var(--shadow-sm)' }}>
+
         {/* Event Name */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            marginBottom: '8px',
-            color: '#333'
-          }}>
-            Event Name *
+        <div style={{ marginBottom: 20 }}>
+          <label style={labelStyle}>
+            Event Name <span style={{ color: 'var(--clr-primary)' }}>*</span>
           </label>
           <input
             type="text"
             name="eventName"
             value={formData.eventName}
             onChange={handleChange}
-            placeholder="e.g., Sarah's Birthday Party"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit'
-            }}
+            className="form-input"
+            placeholder="e.g. Sarah's Birthday Party"
+            disabled={submitting}
           />
         </div>
 
         {/* Event Type */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            marginBottom: '8px',
-            color: '#333'
-          }}>
-            Event Type
-          </label>
+        <div style={{ marginBottom: 20 }}>
+          <label style={labelStyle}>Event Type</label>
           <select
             name="eventType"
             value={formData.eventType}
             onChange={handleChange}
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit'
-            }}
+            className="filter-select"
+            style={{ width: '100%', padding: '10px 12px' }}
+            disabled={submitting}
           >
-            {eventTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
+            {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
 
         {/* Date & Time */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '16px',
-          marginBottom: '16px'
-        }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
           <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              marginBottom: '8px',
-              color: '#333'
-            }}>
-              Event Date *
-            </label>
+            <label style={labelStyle}>Event Date <span style={{ color: 'var(--clr-primary)' }}>*</span></label>
             <input
               type="date"
               name="eventDate"
               value={formData.eventDate}
               onChange={handleChange}
               min={new Date().toISOString().split('T')[0]}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                fontFamily: 'inherit'
-              }}
+              className="form-input"
+              disabled={submitting}
             />
           </div>
-
           <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              marginBottom: '8px',
-              color: '#333'
-            }}>
-              Event Time *
-            </label>
+            <label style={labelStyle}>Event Time <span style={{ color: 'var(--clr-primary)' }}>*</span></label>
             <input
               type="time"
               name="eventTime"
               value={formData.eventTime}
               onChange={handleChange}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                fontFamily: 'inherit'
-              }}
+              className="form-input"
+              disabled={submitting}
             />
           </div>
         </div>
 
-        {/* Guest Count & Duration */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '16px',
-          marginBottom: '16px'
-        }}>
+        {/* Guests & Duration */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
           <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              marginBottom: '8px',
-              color: '#333'
-            }}>
-              Number of Guests *
-            </label>
+            <label style={labelStyle}>Number of Guests <span style={{ color: 'var(--clr-primary)' }}>*</span></label>
             <input
               type="number"
               name="guestCount"
               value={formData.guestCount}
               onChange={handleChange}
-              min="1"
-              max="500"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                fontFamily: 'inherit'
-              }}
+              min="1" max="500"
+              className="form-input"
+              disabled={submitting}
             />
           </div>
-
           <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              marginBottom: '8px',
-              color: '#333'
-            }}>
-              Event Duration (minutes)
-            </label>
+            <label style={labelStyle}>Duration (minutes)</label>
             <input
               type="number"
               name="duration"
               value={formData.duration}
               onChange={handleChange}
-              min="30"
-              max="480"
-              step="30"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                fontFamily: 'inherit'
-              }}
+              min="30" max="480" step="30"
+              className="form-input"
+              disabled={submitting}
             />
           </div>
         </div>
 
         {/* Budget */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            marginBottom: '8px',
-            color: '#333'
-          }}>
-            Estimated Budget (₹)
-          </label>
+        <div style={{ marginBottom: 20 }}>
+          <label style={labelStyle}>Estimated Budget (৳)</label>
           <input
             type="number"
             name="estimatedBudget"
@@ -392,118 +225,48 @@ export default function EventBookingPage() {
             onChange={handleChange}
             min="0"
             placeholder="Total budget for the event"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit'
-            }}
+            className="form-input"
+            disabled={submitting}
           />
         </div>
 
         {/* Description */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            marginBottom: '8px',
-            color: '#333'
-          }}>
-            Event Description
-          </label>
+        <div style={{ marginBottom: 20 }}>
+          <label style={labelStyle}>Event Description</label>
           <textarea
             name="description"
             value={formData.description}
             onChange={handleChange}
-            placeholder="Tell us about your event..."
-            rows="3"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit',
-              resize: 'vertical'
-            }}
+            className="form-input"
+            rows={3}
+            style={{ resize: 'vertical' }}
+            placeholder="Tell us about your event…"
+            disabled={submitting}
           />
         </div>
 
         {/* Special Requirements */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            marginBottom: '8px',
-            color: '#333'
-          }}>
-            Special Requirements
-          </label>
+        <div style={{ marginBottom: 28 }}>
+          <label style={labelStyle}>Special Requirements</label>
           <textarea
             name="specialRequirements"
             value={formData.specialRequirements}
             onChange={handleChange}
-            placeholder="Any special requests? (e.g., decoration, dietary restrictions, etc.)"
-            rows="3"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit',
-              resize: 'vertical'
-            }}
+            className="form-input"
+            rows={3}
+            style={{ resize: 'vertical' }}
+            placeholder="Decorations, dietary restrictions, AV equipment…"
+            disabled={submitting}
           />
         </div>
 
         {/* Buttons */}
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          justifyContent: 'flex-end'
-        }}>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            disabled={submitting}
-            style={{
-              padding: '10px 24px',
-              background: '#f0f0f0',
-              color: '#333',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              fontSize: '14px',
-              opacity: submitting ? 0.6 : 1
-            }}
-          >
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={() => navigate(-1)} disabled={submitting} className="btn btn-ghost">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              padding: '10px 32px',
-              background: '#FF6B35',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontWeight: '600',
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              opacity: submitting ? 0.7 : 1
-            }}
-          >
-            {submitting ? 'Creating...' : 'Request Event Booking'}
+          <button type="submit" disabled={submitting || success} className="btn btn-primary">
+            {submitting ? 'Submitting…' : 'Request Event Booking'}
           </button>
         </div>
       </form>

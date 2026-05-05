@@ -1,52 +1,49 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { forumAPI } from '../services/api';
 import { useAuthStore } from '../context/store';
+
+const CATEGORIES = [
+  'Best in City',
+  'Hidden Gems',
+  'Bad Experiences',
+  'Ask the Community',
+  'Deals and Offers',
+  'Neighbourhood Eats',
+];
 
 export default function EditPostPage() {
   const { postId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    category: 'general',
-    tags: []
-  });
-  const [post, setPost] = useState(null);
-  const [tagInput, setTagInput] = useState('');
+  const [formData, setFormData] = useState({ title: '', content: '', category: '', tags: '' });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState(null);
 
-  const categories = ['general', 'recommendations', 'help', 'reviews', 'events', 'announcements'];
-
-  useEffect(() => {
-    fetchPost();
-  }, [postId]);
+  useEffect(() => { fetchPost(); }, [postId]);
 
   const fetchPost = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/forum/posts/${postId}`);
-      const postData = response.data;
+      const res = await forumAPI.getPost(postId);
+      const post = res.data.data;
 
-      // Check if current user owns the post
-      if (postData.author._id !== user?._id) {
-        setError('You can only edit your own posts');
+      const ownerId = post.userId?._id || post.userId;
+      if (ownerId && ownerId.toString() !== (user?._id || user?.id)?.toString() && user?.role !== 'admin') {
+        setError('You can only edit your own posts.');
         return;
       }
 
-      setPost(postData);
       setFormData({
-        title: postData.title,
-        content: postData.content,
-        category: postData.category,
-        tags: postData.tags || []
+        title:    post.title    || '',
+        content:  post.content  || '',
+        category: post.category || '',
+        tags:     (post.tags || []).join(', '),
       });
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch post');
+    } catch {
+      setError('Failed to load post. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -54,365 +51,148 @@ export default function EditPostPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleAddTag = () => {
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, tagInput.trim()]
-      }));
-      setTagInput('');
-    }
-  };
-
-  const handleRemoveTag = (tag) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(t => t !== tag)
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!formData.title.trim()) {
-      setError('Title is required');
-      return;
-    }
-
-    if (!formData.content.trim()) {
-      setError('Content is required');
-      return;
-    }
+    if (!formData.title.trim())   { setError('Title is required.');   return; }
+    if (!formData.content.trim()) { setError('Content is required.'); return; }
 
     setSaving(true);
     setError(null);
-
     try {
-      await api.put(`/forum/posts/${postId}`, formData);
+      await forumAPI.updatePost(postId, {
+        title:    formData.title.trim(),
+        content:  formData.content.trim(),
+        category: formData.category,
+        tags:     formData.tags.split(',').map(t => t.trim()).filter(Boolean),
+      });
       navigate(`/forum/${postId}`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update post');
+      setError(err.response?.data?.message || 'Failed to update post.');
       setSaving(false);
     }
   };
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '60vh',
-        fontSize: '16px',
-        color: '#999'
-      }}>
-        Loading post...
+      <div style={{ maxWidth: 760, margin: '60px auto', padding: '0 24px', textAlign: 'center' }}>
+        <div className="spinner" />
       </div>
     );
   }
 
-  if (error && !post) {
+  if (error && !formData.title) {
     return (
-      <div style={{
-        maxWidth: '800px',
-        margin: '0 auto',
-        padding: '24px',
-        textAlign: 'center'
-      }}>
-        <div style={{
-          background: '#ffebee',
-          color: '#c62828',
-          padding: '16px',
-          borderRadius: '4px',
-          marginBottom: '16px'
-        }}>
+      <div style={{ maxWidth: 760, margin: '40px auto', padding: '0 24px' }}>
+        <div style={{ padding: '14px 16px', background: '#FEE2E2', color: '#DC2626', borderRadius: 'var(--r-md)', marginBottom: 16, fontSize: 14 }}>
           {error}
         </div>
-        <button
-          onClick={() => navigate('/forum')}
-          style={{
-            padding: '10px 20px',
-            background: '#2196F3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: '600'
-          }}
-        >
-          Back to Forum
-        </button>
+        <Link to="/forum" style={{ color: 'var(--clr-primary)', fontWeight: 600, fontSize: 14 }}>← Back to Forum</Link>
       </div>
     );
   }
 
   return (
-    <div style={{
-      maxWidth: '800px',
-      margin: '0 auto',
-      padding: '24px'
-    }}>
-      <h1 style={{
-        fontSize: '28px',
-        marginBottom: '24px',
-        color: '#333'
-      }}>
-        Edit Forum Post
-      </h1>
+    <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px 60px' }}>
 
-      <form onSubmit={handleSubmit} style={{
-        background: 'white',
-        borderRadius: '8px',
-        padding: '24px',
-        border: '1px solid #e0e0e0'
-      }}>
-        {error && (
-          <div style={{
-            background: '#fff3cd',
-            color: '#856404',
-            padding: '12px',
-            borderRadius: '4px',
-            marginBottom: '16px',
-            border: '1px solid #ffeaa7'
-          }}>
-            {error}
-          </div>
-        )}
+      <Link to={`/forum/${postId}`} style={{ color: 'var(--clr-primary)', fontSize: 13, fontWeight: 600, display: 'inline-block', marginBottom: 20 }}>
+        ← Back to Post
+      </Link>
+
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--clr-primary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+          Community Forum
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 900, margin: 0 }}>Edit Post</h1>
+      </div>
+
+      {error && (
+        <div style={{ padding: '12px 16px', background: '#FEE2E2', color: '#DC2626', borderRadius: 'var(--r-md)', marginBottom: 20, fontSize: 13 }}>
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} style={{ background: 'white', borderRadius: 'var(--r-lg)', border: '1px solid var(--clr-border)', padding: '28px', boxShadow: 'var(--shadow-sm)' }}>
 
         {/* Title */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '6px',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#333'
-          }}>
-            Title
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--clr-dark)' }}>
+            Title <span style={{ color: 'var(--clr-primary)' }}>*</span>
           </label>
           <input
             type="text"
             name="title"
             value={formData.title}
             onChange={handleChange}
-            placeholder="Enter post title"
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit'
-            }}
+            className="form-input"
+            disabled={saving}
           />
         </div>
 
         {/* Category */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '6px',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#333'
-          }}>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--clr-dark)' }}>
             Category
           </label>
           <select
             name="category"
             value={formData.category}
             onChange={handleChange}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit'
-            }}
+            className="filter-select"
+            style={{ width: '100%', padding: '10px 12px' }}
+            disabled={saving}
           >
-            {categories.map(cat => (
-              <option key={cat} value={cat}>
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </option>
+            <option value="">Select a category…</option>
+            {CATEGORIES.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
         </div>
 
         {/* Content */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '6px',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#333'
-          }}>
-            Content
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--clr-dark)' }}>
+            Content <span style={{ color: 'var(--clr-primary)' }}>*</span>
           </label>
           <textarea
             name="content"
             value={formData.content}
             onChange={handleChange}
-            placeholder="Write your post content here..."
-            rows="10"
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit',
-              resize: 'vertical'
-            }}
+            className="form-input"
+            rows={8}
+            style={{ resize: 'vertical' }}
+            disabled={saving}
           />
-          <span style={{
-            fontSize: '12px',
-            color: '#999',
-            marginTop: '4px',
-            display: 'block'
-          }}>
+          <div style={{ fontSize: 12, color: 'var(--clr-text-muted)', marginTop: 4 }}>
             {formData.content.length}/3000 characters
-          </span>
+          </div>
         </div>
 
         {/* Tags */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '6px',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#333'
-          }}>
-            Tags
+        <div style={{ marginBottom: 28 }}>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--clr-dark)' }}>
+            Tags <span style={{ fontWeight: 400, color: 'var(--clr-text-muted)', marginLeft: 4 }}>(comma-separated)</span>
           </label>
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            marginBottom: '8px'
-          }}>
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-              placeholder="Add a tag and press Enter"
-              style={{
-                flex: 1,
-                padding: '10px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px',
-                fontFamily: 'inherit'
-              }}
-            />
-            <button
-              type="button"
-              onClick={handleAddTag}
-              style={{
-                padding: '10px 16px',
-                background: '#2196F3',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: '600'
-              }}
-            >
-              Add
-            </button>
-          </div>
-
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '8px'
-          }}>
-            {formData.tags.map(tag => (
-              <div
-                key={tag}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: '#e3f2fd',
-                  padding: '6px 12px',
-                  borderRadius: '20px',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  color: '#1976D2'
-                }}
-              >
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveTag(tag)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#1976D2',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    padding: '0'
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
+          <input
+            type="text"
+            name="tags"
+            value={formData.tags}
+            onChange={handleChange}
+            className="form-input"
+            placeholder="e.g. biryani, dhaka, budget-eats"
+            disabled={saving}
+          />
         </div>
 
-        {/* Action Buttons */}
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          justifyContent: 'flex-end'
-        }}>
-          <button
-            type="button"
-            onClick={() => navigate(`/forum/${postId}`)}
-            disabled={saving}
-            style={{
-              padding: '10px 20px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              background: 'white',
-              color: '#333',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: saving ? 'not-allowed' : 'pointer',
-              opacity: saving ? 0.6 : 1
-            }}
-          >
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={() => navigate(`/forum/${postId}`)} disabled={saving} className="btn btn-ghost">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={saving}
-            style={{
-              padding: '10px 20px',
-              background: '#4CAF50',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: saving ? 'not-allowed' : 'pointer',
-              opacity: saving ? 0.7 : 1
-            }}
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
+          <button type="submit" disabled={saving} className="btn btn-primary">
+            {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </form>

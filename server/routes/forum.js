@@ -9,7 +9,7 @@ import {
   createComment,
   updateComment,
   deleteComment,
-  likeComment
+  getReplies
 } from '../controllers/forumController.js';
 import { authMiddleware } from '../middleware/auth.js';
 
@@ -27,6 +27,6 @@ router.get('/posts/:postId/comments', getComments);
 router.post('/posts/:postId/comments', authMiddleware, createComment);
 router.put('/comments/:id', authMiddleware, updateComment);
 router.delete('/comments/:id', authMiddleware, deleteComment);
-router.post('/comments/:id/like', authMiddleware, likeComment);
+router.get('/comments/:id/replies', getReplies);
 
 export default router;

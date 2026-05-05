@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { dishAPI } from '../services/api';
+import { useAuthStore } from '../context/store';
 import { StarRating, ReviewCard, SkeletonReviewCard } from '../components/common';
 
 const CRITERIA_COLORS = {
@@ -34,6 +35,7 @@ function DietaryPills({ info }) {
 
 export default function DishPage() {
   const { dishId } = useParams();
+  const { isAuthenticated } = useAuthStore();
   const [dish, setDish]       = useState(null);
   const [reviews, setReviews] = useState([]);
   const [total, setTotal]     = useState(0);
@@ -195,10 +197,17 @@ export default function DishPage() {
 
       {/* Reviews */}
       <div>
-        <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 20 }}>
-          Customer Reviews
-          {total > 0 && <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--clr-text-light)', marginLeft: 8 }}>({total})</span>}
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>
+            Customer Reviews
+            {total > 0 && <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--clr-text-light)', marginLeft: 8 }}>({total})</span>}
+          </h2>
+          {isAuthenticated && restaurant && (
+            <Link to={`/review/create?restaurantId=${restaurant._id}&dishId=${dish._id}`} className="btn btn-primary btn-sm">
+              Write a Review
+            </Link>
+          )}
+        </div>
 
         {revLoading && page === 1 ? (
           Array.from({ length: 4 }).map((_, i) => <SkeletonReviewCard key={i} />)
@@ -210,9 +219,9 @@ export default function DishPage() {
           }}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>✍️</div>
             <p>No reviews for this dish yet. Be the first!</p>
-            {restaurant && (
+            {isAuthenticated && restaurant && (
               <Link
-                to={`/review/create?restaurantId=${restaurant._id}`}
+                to={`/review/create?restaurantId=${restaurant._id}&dishId=${dish._id}`}
                 className="btn btn-primary"
                 style={{ marginTop: 14 }}
               >

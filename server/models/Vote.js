@@ -10,7 +10,7 @@ const voteSchema = new mongoose.Schema({
   createdAt:  { type: Date, default: Date.now }
 });
 
-// One vote per user per target — prevents double-voting
-voteSchema.index({ userId: 1, parentId: 1 }, { unique: true });
+// One vote per user per target per type — prevents double-voting across the same item
+voteSchema.index({ userId: 1, parentId: 1, parentType: 1 }, { unique: true });
 
 export default mongoose.model('Vote', voteSchema);
