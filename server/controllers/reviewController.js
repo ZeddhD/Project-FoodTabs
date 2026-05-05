@@ -14,7 +14,12 @@ export const getReviews = async (req, res, next) => {
 
     let filter = { isPublished: { $ne: false } };
     if (restaurantId) filter.restaurantId = restaurantId;
-    if (dishId)       filter.dishId       = dishId;
+    if (dishId) {
+      filter.$or = [
+        { dishId: dishId },
+        { 'dishReviews.dishId': dishId }
+      ];
+    }
     if (userId)       filter.userId       = userId;
     if (minRating)    filter.rating       = { $gte: parseFloat(minRating) };
     if (verified === 'true') filter.verifiedVisit = true;

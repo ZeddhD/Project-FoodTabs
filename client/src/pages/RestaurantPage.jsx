@@ -29,37 +29,43 @@ function ExpandedDishReviews({ restaurantId, dish }) {
 
   return (
     <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {reviews.map(rv => (
-        <div key={rv._id} style={{
-          background: 'var(--clr-bg-alt)', borderRadius: 'var(--r-md)',
-          padding: '12px 14px', fontSize: 13
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{
-              width: 26, height: 26, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #E8460B, #FFB800)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 700, color: 'white', flexShrink: 0
-            }}>
-              {(rv.userId?.name || 'U')[0].toUpperCase()}
-            </span>
-            <span style={{ fontWeight: 600 }}>{rv.userId?.name || 'Anonymous'}</span>
-            {rv.dishRating && (
-              <span style={{ color: CRITERIA_COLORS.taste, fontWeight: 700 }}>
-                {rv.dishRating} ★
+      {reviews.map(rv => {
+        const dishEntry = rv.dishReviews?.find(dr => {
+          const id = dr.dishId?._id?.toString() || dr.dishId?.toString();
+          return id === dish._id?.toString();
+        });
+        return (
+          <div key={rv._id} style={{
+            background: 'var(--clr-bg-alt)', borderRadius: 'var(--r-md)',
+            padding: '12px 14px', fontSize: 13
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{
+                width: 26, height: 26, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #E8460B, #FFB800)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 700, color: 'white', flexShrink: 0
+              }}>
+                {(rv.userId?.name || 'U')[0].toUpperCase()}
               </span>
+              <span style={{ fontWeight: 600 }}>{rv.userId?.name || 'Anonymous'}</span>
+              {dishEntry?.rating && (
+                <span style={{ color: CRITERIA_COLORS.taste, fontWeight: 700 }}>
+                  {dishEntry.rating} ★
+                </span>
+              )}
+            </div>
+            {dishEntry?.comment && (
+              <p style={{ color: 'var(--clr-text-secondary)', marginBottom: 4, fontStyle: 'italic' }}>"{dishEntry.comment}"</p>
+            )}
+            {rv.content && (
+              <p style={{ color: 'var(--clr-text-light)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                {rv.content}
+              </p>
             )}
           </div>
-          {rv.dishComment && (
-            <p style={{ color: 'var(--clr-text-secondary)', marginBottom: 4, fontStyle: 'italic' }}>"{rv.dishComment}"</p>
-          )}
-          {rv.content && (
-            <p style={{ color: 'var(--clr-text-light)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-              {rv.content}
-            </p>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -2,6 +2,9 @@
 import { useAuthStore } from '../context/store';
 import VoteButtons from './VoteButtons';
 
+const SERVER_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
+const getMediaUrl = (path) => (!path || path.startsWith('http')) ? path : `${SERVER_BASE}${path}`;
+
 /* ─────────────────────────────────────────────────────────
    Verified Badge SVG  (fork motif inside shield)
    size: 'sm' | 'md' | 'lg'
@@ -370,7 +373,7 @@ export const ReviewCard = ({ review, onDelete, currentUserId, onReport }) => {
         <div className="photo-grid" style={{ marginTop: 12 }}>
           {review.photos.map((photo, idx) => (
             <div key={idx} className="photo-thumb">
-              <img src={photo} alt={`Review photo ${idx + 1}`} />
+              <img src={getMediaUrl(photo)} alt={`Review photo ${idx + 1}`} />
             </div>
           ))}
         </div>

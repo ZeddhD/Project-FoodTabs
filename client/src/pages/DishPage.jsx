@@ -231,27 +231,33 @@ export default function DishPage() {
           </div>
         ) : (
           <>
-            {reviews.map(rv => (
-              <div key={rv._id} style={{ marginBottom: 16 }}>
-                {rv.dishRating && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{
-                      background: CRITERIA_COLORS.taste, color: 'white',
-                      borderRadius: 20, padding: '2px 10px',
-                      fontSize: 13, fontWeight: 700
-                    }}>
-                      {rv.dishRating.toFixed(1)} ★ for this dish
-                    </span>
-                    {rv.dishComment && (
-                      <span style={{ fontSize: 13, color: 'var(--clr-text-secondary)', fontStyle: 'italic' }}>
-                        "{rv.dishComment}"
+            {reviews.map(rv => {
+              const dishEntry = rv.dishReviews?.find(dr => {
+                const id = dr.dishId?._id?.toString() || dr.dishId?.toString();
+                return id === dishId;
+              });
+              return (
+                <div key={rv._id} style={{ marginBottom: 16 }}>
+                  {dishEntry?.rating && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{
+                        background: CRITERIA_COLORS.taste, color: 'white',
+                        borderRadius: 20, padding: '2px 10px',
+                        fontSize: 13, fontWeight: 700
+                      }}>
+                        {dishEntry.rating.toFixed(1)} ★ for this dish
                       </span>
-                    )}
-                  </div>
-                )}
-                <ReviewCard review={rv} />
-              </div>
-            ))}
+                      {dishEntry.comment && (
+                        <span style={{ fontSize: 13, color: 'var(--clr-text-secondary)', fontStyle: 'italic' }}>
+                          "{dishEntry.comment}"
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <ReviewCard review={rv} />
+                </div>
+              );
+            })}
             {hasMore && (
               <button
                 className="btn btn-outline"
