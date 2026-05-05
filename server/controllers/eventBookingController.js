@@ -211,7 +211,7 @@ export const updateEventBookingStatus = async (req, res, next) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
+    if (!['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
       return sendError(res, 400, 'Invalid status');
     }
 

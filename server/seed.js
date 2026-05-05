@@ -282,14 +282,14 @@ async function seed() {
     { restaurantId:r4._id, name:'Matcha Ice Cream',         description:'Uji matcha soft serve',                       price:280, category:'Dessert', isAvailable:true },
     { restaurantId:r4._id, name:'Green Tea',                description:'Hot or iced Sencha green tea',                price:150, category:'Drinks',  isAvailable:true },
     // Bella Napoli
-    { restaurantId:r5._id, name:'Margherita Pizza',         description:'San Marzano tomato, buffalo mozzarella, basil',price:680,category:'Pizza',   isAvailable:true },
+    { restaurantId:r5._id, name:'Margherita Pizza',         description:'San Marzano tomato, buffalo mozzarella, basil',price:680,category:'Pizza',   isAvailable:true, dietaryInfo:{ isVegetarian:true } },
     { restaurantId:r5._id, name:'Pepperoni Pizza',          description:'Classic Calabrese pepperoni, fior di latte',  price:820, category:'Pizza',   isAvailable:true },
     { restaurantId:r5._id, name:'Spaghetti Carbonara',      description:'Guanciale, egg yolk, Pecorino Romano',        price:720, category:'Pasta',   isAvailable:true },
-    { restaurantId:r5._id, name:'Penne Arrabbiata',         description:'San Marzano tomato, chilli, garlic, basil',   price:620, category:'Pasta',   isAvailable:true },
-    { restaurantId:r5._id, name:'Bruschetta',               description:'Sourdough, tomato, basil, aged balsamic',     price:380, category:'Starters',isAvailable:true },
-    { restaurantId:r5._id, name:'Tiramisu',                 description:'House-made with Mascarpone, Savoiardi',       price:420, category:'Dessert', isAvailable:true },
-    { restaurantId:r5._id, name:'Panna Cotta',              description:'Vanilla bean panna cotta, berry compote',     price:380, category:'Dessert', isAvailable:true },
-    { restaurantId:r5._id, name:'San Pellegrino',           description:'Sparkling natural mineral water',             price:220, category:'Drinks',  isAvailable:true },
+    { restaurantId:r5._id, name:'Penne Arrabbiata',         description:'San Marzano tomato, chilli, garlic, basil',   price:620, category:'Pasta',   isAvailable:true, dietaryInfo:{ isVegetarian:true, isSpicy:true } },
+    { restaurantId:r5._id, name:'Bruschetta',               description:'Sourdough, tomato, basil, aged balsamic',     price:380, category:'Starters',isAvailable:true, dietaryInfo:{ isVegetarian:true } },
+    { restaurantId:r5._id, name:'Tiramisu',                 description:'House-made with Mascarpone, Savoiardi',       price:420, category:'Dessert', isAvailable:true, dietaryInfo:{ isVegetarian:true } },
+    { restaurantId:r5._id, name:'Panna Cotta',              description:'Vanilla bean panna cotta, berry compote',     price:380, category:'Dessert', isAvailable:true, dietaryInfo:{ isVegetarian:true, isGlutenFree:true } },
+    { restaurantId:r5._id, name:'San Pellegrino',           description:'Sparkling natural mineral water',             price:220, category:'Drinks',  isAvailable:true, dietaryInfo:{ isVegan:true, isGlutenFree:true } },
     // Mezban
     { restaurantId:r6._id, name:'Fuchka (8 pcs)',           description:'Crispy shells with tamarind water',           price:60,  category:'Snacks',  isAvailable:true },
     { restaurantId:r6._id, name:'Chotpoti',                 description:'Chickpea chaat with tamarind and spice',      price:80,  category:'Snacks',  isAvailable:true },
@@ -301,14 +301,14 @@ async function seed() {
     { restaurantId:r6._id, name:'Mango Lassi',              description:'Fresh mango blended with yoghurt',            price:70,  category:'Drinks',  isAvailable:true },
     { restaurantId:r6._id, name:'Fresh Coconut Water',      description:'Young green coconut served fresh',            price:60,  category:'Drinks',  isAvailable:true },
     // Healthy Bowl
-    { restaurantId:r7._id, name:'Classic Macro Bowl',       description:'Quinoa, grilled chicken, roasted veggies',    price:480, category:'Bowls',   isAvailable:true },
-    { restaurantId:r7._id, name:'Protein Power Bowl',       description:'Brown rice, egg white, edamame, chickpea',    price:520, category:'Bowls',   isAvailable:true },
-    { restaurantId:r7._id, name:'Green Detox Smoothie',     description:'Spinach, cucumber, ginger, lemon, apple',     price:280, category:'Drinks',  isAvailable:true },
+    { restaurantId:r7._id, name:'Classic Macro Bowl',       description:'Quinoa, grilled chicken, roasted veggies',    price:480, category:'Bowls',   isAvailable:true, dietaryInfo:{ isGlutenFree:true } },
+    { restaurantId:r7._id, name:'Protein Power Bowl',       description:'Brown rice, egg white, edamame, chickpea',    price:520, category:'Bowls',   isAvailable:true, dietaryInfo:{ isVegetarian:true, isGlutenFree:true } },
+    { restaurantId:r7._id, name:'Green Detox Smoothie',     description:'Spinach, cucumber, ginger, lemon, apple',     price:280, category:'Drinks',  isAvailable:true, dietaryInfo:{ isVegan:true, isGlutenFree:true } },
     { restaurantId:r7._id, name:'Grilled Chicken Wrap',     description:'Multigrain wrap, lettuce, mustard dressing',  price:380, category:'Wraps',   isAvailable:true },
-    { restaurantId:r7._id, name:'Quinoa Salad',             description:'Tri-colour quinoa, herbs, lemon vinaigrette', price:420, category:'Salad',   isAvailable:true },
-    { restaurantId:r7._id, name:'Overnight Oats',           description:'Oat jar with chia seeds and seasonal fruit',  price:280, category:'Breakfast',isAvailable:true },
-    { restaurantId:r7._id, name:'Avocado Toast',            description:'Sourdough, smashed avocado, poached egg',     price:320, category:'Breakfast',isAvailable:true },
-    { restaurantId:r7._id, name:'Acai Bowl',                description:'Frozen acai, granola, fresh fruit, honey',    price:450, category:'Bowls',   isAvailable:true },
+    { restaurantId:r7._id, name:'Quinoa Salad',             description:'Tri-colour quinoa, herbs, lemon vinaigrette', price:420, category:'Salad',   isAvailable:true, dietaryInfo:{ isVegan:true, isGlutenFree:true } },
+    { restaurantId:r7._id, name:'Overnight Oats',           description:'Oat jar with chia seeds and seasonal fruit',  price:280, category:'Breakfast',isAvailable:true, dietaryInfo:{ isVegetarian:true } },
+    { restaurantId:r7._id, name:'Avocado Toast',            description:'Sourdough, smashed avocado, poached egg',     price:320, category:'Breakfast',isAvailable:true, dietaryInfo:{ isVegetarian:true } },
+    { restaurantId:r7._id, name:'Acai Bowl',                description:'Frozen acai, granola, fresh fruit, honey',    price:450, category:'Bowls',   isAvailable:true, dietaryInfo:{ isVegan:true, isGlutenFree:true } },
     // Blue Ocean (pending — still seed dishes for when admin approves)
     { restaurantId:r8._id, name:'Whole Grilled Hilsa',      description:'Fresh Padma hilsa grilled with mustard',      price:1200,category:'Seafood', isAvailable:true },
     { restaurantId:r8._id, name:'Prawn Masala',             description:'King prawns in rich Bengali spice gravy',     price:880, category:'Seafood', isAvailable:true },
@@ -388,6 +388,11 @@ async function seed() {
     { userId:kabir._id, restaurantId:r2._id, eventName:'Friday Night BBQ',  eventType:'Special Event',
       eventDate:evGulshan.eventDate, eventTime:'20:00', duration:240, guestCount:1,
       estimatedBudget:2500, status:'confirmed', confirmationCode:'EV-KABIR-BBQ-001' },
+    { userId:ahmed._id, restaurantId:r4._id, eventName:"Ahmed's Birthday Dinner", eventType:'Birthday',
+      eventDate:daysAgo(7), eventTime:'19:30', duration:180, guestCount:8,
+      estimatedBudget:6000, description:'Surprise birthday dinner for close friends.',
+      specialRequirements:'Balloon decorations, birthday cake with candles.',
+      status:'completed', confirmationCode:'EV-AHMED-BDAY-001' },
   ]);
 
   // ── Reviews ───────────────────────────────────────────────────────────────
@@ -1194,10 +1199,10 @@ async function seed() {
     ...[ahmed,jasim,mitu].map(u => ({ userId:u._id, parentId:reviews[0]._id,  parentType:'Review', value:1 })),
     ...[rina,nadia,kabir].map(u => ({ userId:u._id, parentId:reviews[16]._id, parentType:'Review', value:1 })),
   ];
-  // Remove potential duplicates by userId+parentId combination
+  // Remove potential duplicates by userId+parentId+parentType (matches compound unique index)
   const seen = new Set();
   const uniqueVotes = voteData.filter(v => {
-    const key = `${v.userId}-${v.parentId}`;
+    const key = `${v.userId}-${v.parentId}-${v.parentType}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

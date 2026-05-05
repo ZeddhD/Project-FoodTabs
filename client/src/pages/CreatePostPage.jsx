@@ -1,152 +1,110 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForumStore } from '../context/store';
 import { forumAPI } from '../services/api';
+
+const CATEGORIES = [
+  'Best in City',
+  'Hidden Gems',
+  'Bad Experiences',
+  'Ask the Community',
+  'Deals and Offers',
+  'Neighbourhood Eats',
+];
 
 export default function CreatePostPage() {
   const navigate = useNavigate();
   const { addPost } = useForumStore();
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    category: '',
-    tags: ''
-  });
+  const [formData, setFormData] = useState({ title: '', content: '', category: '', tags: '' });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const CATEGORIES = ['General', 'Recommendations', 'Complaints', 'Tips & Tricks', 'News & Updates'];
+  const [error, setError]     = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-
-    // Validation
-    if (!formData.title.trim()) {
-      setError('Title is required');
-      return;
-    }
-    if (!formData.content.trim()) {
-      setError('Content is required');
-      return;
-    }
-    if (!formData.category) {
-      setError('Please select a category');
-      return;
-    }
+    if (!formData.title.trim())   { setError('Title is required.');    return; }
+    if (!formData.content.trim()) { setError('Content is required.');  return; }
+    if (!formData.category)       { setError('Please select a category.'); return; }
 
     try {
       setLoading(true);
-      const submitData = {
-        title: formData.title,
-        content: formData.content,
+      setError(null);
+      const res = await forumAPI.createPost({
+        title:    formData.title.trim(),
+        content:  formData.content.trim(),
         category: formData.category,
-        tags: formData.tags
-          .split(',')
-          .map(tag => tag.trim())
-          .filter(tag => tag)
-      };
-
-      const response = await forumAPI.createPost(submitData);
-      addPost(response.data.data);
-      alert('Post created successfully!');
-      navigate(`/forum/${response.data.data._id}`);
+        tags:     formData.tags.split(',').map(t => t.trim()).filter(Boolean)
+      });
+      addPost(res.data.data);
+      navigate(`/forum/${res.data.data._id}`);
     } catch (err) {
-      console.error('Error creating post:', err);
       setError(err.response?.data?.message || 'Failed to create post. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const field = (label, name, required = false, hint = null) => (
+    <div style={{ marginBottom: 20 }}>
+      <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--clr-dark)' }}>
+        {label}{required && <span style={{ color: 'var(--clr-primary)', marginLeft: 2 }}> *</span>}
+      </label>
+      <input
+        type="text"
+        name={name}
+        value={formData[name]}
+        onChange={handleChange}
+        className="form-input"
+        disabled={loading}
+        placeholder={hint || ''}
+      />
+    </div>
+  );
+
   return (
-    <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
-      <h1 style={{ marginBottom: '8px' }}>Create a New Post</h1>
-      <p style={{ color: '#666', marginBottom: '24px' }}>
-        Share your thoughts with the community
-      </p>
+    <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px 60px' }}>
+
+      <Link to="/forum" style={{ color: 'var(--clr-primary)', fontSize: 13, fontWeight: 600, display: 'inline-block', marginBottom: 20 }}>
+        ← Back to Forum
+      </Link>
+
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--clr-primary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+          Community Forum
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 900, margin: 0 }}>Create a Post</h1>
+        <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--clr-text-muted)' }}>Share a tip, experience, or question with the community.</p>
+      </div>
 
       {error && (
-        <div style={{
-          padding: '12px',
-          background: '#ffebee',
-          color: '#c62828',
-          borderRadius: '4px',
-          marginBottom: '16px',
-          fontSize: '14px'
-        }}>
+        <div style={{ padding: '12px 16px', background: '#FEE2E2', color: '#DC2626', borderRadius: 'var(--r-md)', marginBottom: 20, fontSize: 13 }}>
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{
-        background: 'white',
-        padding: '24px',
-        borderRadius: '8px',
-        border: '1px solid #e0e0e0'
-      }}>
-        {/* Title */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontWeight: '500',
-            fontSize: '14px'
-          }}>
-            Title *
-          </label>
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            placeholder="Enter post title..."
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              boxSizing: 'border-box'
-            }}
-            disabled={loading}
-          />
-        </div>
+      <form onSubmit={handleSubmit} style={{ background: 'white', borderRadius: 'var(--r-lg)', border: '1px solid var(--clr-border)', padding: '28px', boxShadow: 'var(--shadow-sm)' }}>
+
+        {field('Title', 'title', true, 'e.g. Best biryani in Dhaka?')}
 
         {/* Category */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontWeight: '500',
-            fontSize: '14px'
-          }}>
-            Category *
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--clr-dark)' }}>
+            Category <span style={{ color: 'var(--clr-primary)' }}>*</span>
           </label>
           <select
             name="category"
             value={formData.category}
             onChange={handleChange}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              cursor: 'pointer'
-            }}
+            className="filter-select"
+            style={{ width: '100%', padding: '10px 12px' }}
             disabled={loading}
           >
-            <option value="">Select a category...</option>
+            <option value="">Select a category…</option>
             {CATEGORIES.map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
@@ -154,96 +112,49 @@ export default function CreatePostPage() {
         </div>
 
         {/* Content */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontWeight: '500',
-            fontSize: '14px'
-          }}>
-            Content *
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--clr-dark)' }}>
+            Content <span style={{ color: 'var(--clr-primary)' }}>*</span>
           </label>
           <textarea
             name="content"
             value={formData.content}
             onChange={handleChange}
-            placeholder="Write your post content here... (markdown supported)"
-            style={{
-              width: '100%',
-              minHeight: '300px',
-              padding: '12px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              fontFamily: 'Arial',
-              boxSizing: 'border-box',
-              resize: 'vertical'
-            }}
+            className="form-input"
+            rows={8}
+            style={{ resize: 'vertical' }}
+            placeholder="Write your post here…"
             disabled={loading}
           />
-          <p style={{
-            fontSize: '12px',
-            color: '#999',
-            marginTop: '4px'
-          }}>
-            💡 Tip: You can use markdown formatting for better presentation
-          </p>
+          <div style={{ fontSize: 12, color: 'var(--clr-text-muted)', marginTop: 4 }}>
+            {formData.content.length}/3000 characters
+          </div>
         </div>
 
         {/* Tags */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontWeight: '500',
-            fontSize: '14px'
-          }}>
-            Tags (optional)
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--clr-dark)' }}>
+            Tags <span style={{ fontWeight: 400, color: 'var(--clr-text-muted)', marginLeft: 4 }}>(optional, comma-separated)</span>
           </label>
           <input
             type="text"
             name="tags"
             value={formData.tags}
             onChange={handleChange}
-            placeholder="Enter tags separated by commas (e.g., pizza, restaurant, review)"
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              boxSizing: 'border-box'
-            }}
+            className="form-input"
+            placeholder="e.g. biryani, dhaka, budget-eats"
             disabled={loading}
           />
-          <p style={{
-            fontSize: '12px',
-            color: '#999',
-            marginTop: '4px'
-          }}>
-            Tags help others find your post more easily
-          </p>
         </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '12px',
-            background: loading ? '#ccc' : '#2196F3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '16px',
-            fontWeight: '600',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            transition: 'background 0.2s'
-          }}
-        >
-          {loading ? '⏳ Creating Post...' : '✓ Create Post'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={() => navigate('/forum')} disabled={loading} className="btn btn-ghost">
+            Cancel
+          </button>
+          <button type="submit" disabled={loading} className="btn btn-primary">
+            {loading ? 'Posting…' : 'Post to Community'}
+          </button>
+        </div>
       </form>
     </div>
   );

@@ -145,7 +145,7 @@ export const updateBookingStatus = async (req, res, next) => {
     }
 
     const { status } = req.body;
-    if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
+    if (!['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
       return sendError(res, 400, 'Invalid status');
     }
 
@@ -156,7 +156,9 @@ export const updateBookingStatus = async (req, res, next) => {
     ).populate('restaurantId', 'name');
 
     // Notify the customer of status change
-    const statusLabel = status === 'confirmed' ? '✓ Confirmed' : '✕ Cancelled';
+    const statusLabel = status === 'confirmed' ? '✓ Confirmed'
+      : status === 'completed' ? '✓ Completed'
+      : '✕ Cancelled';
     await createNotification(booking.userId, {
       type: 'booking_update',
       title: `Booking ${statusLabel}`,

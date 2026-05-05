@@ -26,6 +26,7 @@ const restaurantSchema = new mongoose.Schema({
     sunday: { open: String, close: String }
   },
   bookingDeposit: { type: Number, default: 0, min: 0 }, // BDT deposit required to confirm a booking
+  viewsCount: { type: Number, default: 0 },
   isVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
   tags: [String],

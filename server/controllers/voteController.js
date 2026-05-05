@@ -38,7 +38,7 @@ export const castVote = async (req, res, next) => {
       return sendError(res, 400, 'parentId is required');
     }
 
-    const existing = await Vote.findOne({ userId, parentId });
+    const existing = await Vote.findOne({ userId, parentId, parentType });
 
     if (existing) {
       if (existing.value === numValue) {

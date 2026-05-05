@@ -1,272 +1,143 @@
 import { useState } from 'react';
-import { forumAPI } from '../services/api';
+
+const STATUS_STYLES = {
+  pending:   { color: '#D97706', bg: '#FEF3C720' },
+  resolved:  { color: '#059669', bg: '#D1FAE520' },
+  dismissed: { color: 'var(--clr-text-muted)', bg: 'var(--clr-bg-alt)' },
+};
 
 export default function ReportCard({ report, onUpdate, onStatusChange }) {
   const [actionMessage, setActionMessage] = useState('');
   const [showActionForm, setShowActionForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
 
   const getContentTypeLabel = (type) => {
     const labels = {
-      post: '📝 Forum Post',
+      post:    '📝 Forum Post',
       comment: '💬 Comment',
-      review: '⭐ Review',
-      user: '👤 User'
+      review:  '⭐ Review',
+      user:    '👤 User',
     };
     return labels[type] || type;
   };
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'pending':
-        return '#FF9800';
-      case 'resolved':
-        return '#4CAF50';
-      case 'dismissed':
-        return '#999';
-      default:
-        return '#2196F3';
-    }
-  };
+  const statusStyle = STATUS_STYLES[report.status?.toLowerCase()] || { color: 'var(--clr-primary)', bg: 'var(--clr-primary-light)' };
 
   const handleAction = async (action) => {
     if (!actionMessage.trim() && action !== 'dismiss') {
-      alert('Please enter an action message.');
+      setActionError('Please enter an action message.');
       return;
     }
-
     try {
       setLoading(true);
-      // Update report with action
-      // In a real app, there would be an endpoint for admin actions
+      setActionError(null);
       onStatusChange?.(report._id, {
-        status: action === 'dismiss' ? 'dismissed' : 'resolved',
-        adminAction: action,
-        adminMessage: actionMessage
+        status:        action === 'dismiss' ? 'dismissed' : 'resolved',
+        adminAction:   action,
+        adminMessage:  actionMessage,
       });
-      alert(`Report ${action}ed successfully!`);
+      setActionSuccess(`Report ${action}d successfully.`);
       setShowActionForm(false);
       setActionMessage('');
-    } catch (err) {
-      console.error('Error handling report:', err);
-      alert('Failed to handle report. Please try again.');
+    } catch {
+      setActionError('Failed to handle report. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const isActioned = report.status === 'resolved' || report.status === 'dismissed';
+
   return (
-    <div
-      style={{
-        background: 'white',
-        borderRadius: '8px',
-        border: `2px solid ${getStatusColor(report.status)}`,
-        padding: '16px',
-        marginBottom: '12px'
-      }}
-    >
+    <div style={{
+      background: 'white',
+      borderRadius: 'var(--r-lg)',
+      border: `2px solid ${statusStyle.color}`,
+      padding: '16px',
+      marginBottom: 12,
+    }}>
+
       {/* Header */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'start',
-        marginBottom: '12px'
-      }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            alignItems: 'center',
-            marginBottom: '4px'
-          }}>
-            <span style={{
-              padding: '4px 12px',
-              background: '#f0f0f0',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: '600',
-              color: '#666'
-            }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+            <span className="tag" style={{ background: 'var(--clr-bg-alt)', color: 'var(--clr-text-muted)' }}>
               {getContentTypeLabel(report.contentType)}
             </span>
-            <span style={{
-              padding: '4px 12px',
-              background: getStatusColor(report.status) + '20',
-              color: getStatusColor(report.status),
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: '600',
-              textTransform: 'uppercase'
-            }}>
+            <span className="tag" style={{ background: statusStyle.bg, color: statusStyle.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {report.status || 'pending'}
             </span>
           </div>
-          <p style={{ margin: '0 0 4px 0', color: '#999', fontSize: '12px' }}>
+          <p style={{ margin: '0 0 2px', color: 'var(--clr-text-muted)', fontSize: 12 }}>
             Reported by: {report.reportedBy?.name || 'Anonymous'}
           </p>
-          <p style={{ margin: 0, color: '#999', fontSize: '12px' }}>
-            {new Date(report.createdAt).toLocaleDateString()} at{' '}
-            {new Date(report.createdAt).toLocaleTimeString()}
+          <p style={{ margin: 0, color: 'var(--clr-text-muted)', fontSize: 12 }}>
+            {new Date(report.createdAt).toLocaleDateString()} at {new Date(report.createdAt).toLocaleTimeString()}
           </p>
         </div>
-        <span style={{
-          fontSize: '18px',
-          padding: '8px 12px',
-          background: '#f5f5f5',
-          borderRadius: '4px'
-        }}>
+        <span style={{ fontSize: 13, fontWeight: 700, padding: '6px 10px', background: 'var(--clr-bg-alt)', borderRadius: 'var(--r-sm)', color: 'var(--clr-text-muted)' }}>
           #{report._id?.slice(-6)}
         </span>
       </div>
 
       {/* Reason */}
-      <div style={{
-        background: '#f9f9f9',
-        padding: '12px',
-        borderRadius: '4px',
-        marginBottom: '12px'
-      }}>
-        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-          Reason:
-        </p>
-        <p style={{ margin: 0, fontSize: '13px', color: '#333' }}>
-          {report.reason}
-        </p>
+      <div style={{ background: 'var(--clr-bg)', padding: '10px 12px', borderRadius: 'var(--r-md)', marginBottom: 10 }}>
+        <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 600, color: 'var(--clr-text-muted)' }}>Reason:</p>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--clr-text)' }}>{report.reason}</p>
       </div>
 
       {/* Description */}
       {report.description && (
-        <div style={{
-          background: '#f9f9f9',
-          padding: '12px',
-          borderRadius: '4px',
-          marginBottom: '12px'
-        }}>
-          <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-            Additional Details:
-          </p>
-          <p style={{ margin: 0, fontSize: '13px', color: '#333' }}>
-            {report.description}
-          </p>
+        <div style={{ background: 'var(--clr-bg)', padding: '10px 12px', borderRadius: 'var(--r-md)', marginBottom: 10 }}>
+          <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 600, color: 'var(--clr-text-muted)' }}>Additional Details:</p>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--clr-text)' }}>{report.description}</p>
         </div>
       )}
 
-      {/* Admin Action Form */}
-      {showActionForm && report.status !== 'resolved' && report.status !== 'dismissed' ? (
-        <div style={{
-          background: '#E3F2FD',
-          padding: '12px',
-          borderRadius: '4px',
-          marginBottom: '12px',
-          border: '1px solid #BBDEFB'
-        }}>
-          <p style={{
-            margin: '0 0 8px 0',
-            fontWeight: '600',
-            fontSize: '12px',
-            color: '#1976D2'
-          }}>
-            Take Action
-          </p>
+      {/* Feedback */}
+      {actionError && (
+        <div style={{ padding: '8px 12px', background: '#FEE2E2', color: '#DC2626', borderRadius: 'var(--r-sm)', marginBottom: 10, fontSize: 13 }}>
+          {actionError}
+        </div>
+      )}
+      {actionSuccess && (
+        <div style={{ padding: '8px 12px', background: '#D1FAE5', color: '#059669', borderRadius: 'var(--r-sm)', marginBottom: 10, fontSize: 13, fontWeight: 600 }}>
+          ✓ {actionSuccess}
+        </div>
+      )}
+
+      {/* Action Form */}
+      {showActionForm && !isActioned ? (
+        <div style={{ background: '#EFF6FF', padding: '12px', borderRadius: 'var(--r-md)', marginBottom: 12, border: '1px solid #BFDBFE' }}>
+          <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 12, color: '#2563EB' }}>Take Action</p>
           <textarea
             value={actionMessage}
-            onChange={(e) => setActionMessage(e.target.value)}
+            onChange={e => { setActionMessage(e.target.value); setActionError(null); }}
             placeholder="Enter action details..."
-            style={{
-              width: '100%',
-              minHeight: '80px',
-              padding: '8px',
-              border: '1px solid #BBDEFB',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontFamily: 'Arial',
-              boxSizing: 'border-box',
-              resize: 'vertical',
-              marginBottom: '8px'
-            }}
+            className="form-input"
+            style={{ minHeight: 80, fontSize: 12, resize: 'vertical', marginBottom: 8 }}
             disabled={loading}
           />
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => handleAction('resolve')}
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: '6px',
-                background: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '600'
-              }}
-            >
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => handleAction('resolve')} disabled={loading} className="btn btn-sm" style={{ flex: 1, background: '#059669', color: 'white', border: 'none' }}>
               ✓ Resolve
             </button>
-            <button
-              onClick={() => handleAction('dismiss')}
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: '6px',
-                background: '#999',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '600'
-              }}
-            >
+            <button onClick={() => handleAction('dismiss')} disabled={loading} className="btn btn-sm" style={{ flex: 1, background: 'var(--clr-text-muted)', color: 'white', border: 'none' }}>
               ✗ Dismiss
             </button>
-            <button
-              onClick={() => setShowActionForm(false)}
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: '6px',
-                background: '#ddd',
-                color: '#666',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '600'
-              }}
-            >
+            <button onClick={() => setShowActionForm(false)} disabled={loading} className="btn btn-ghost btn-sm" style={{ flex: 1 }}>
               Cancel
             </button>
           </div>
         </div>
-      ) : report.status !== 'resolved' && report.status !== 'dismissed' ? (
-        <button
-          onClick={() => setShowActionForm(true)}
-          style={{
-            width: '100%',
-            padding: '8px',
-            background: '#2196F3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '12px',
-            fontWeight: '600'
-          }}
-        >
+      ) : !isActioned ? (
+        <button onClick={() => setShowActionForm(true)} className="btn btn-primary" style={{ width: '100%', fontSize: 13 }}>
           ⚙️ Take Action
         </button>
       ) : (
-        <div style={{
-          background: '#C8E6C9',
-          padding: '8px',
-          borderRadius: '4px',
-          textAlign: 'center',
-          fontSize: '12px',
-          color: '#2E7D32',
-          fontWeight: '600'
-        }}>
+        <div style={{ background: '#D1FAE5', padding: '8px', borderRadius: 'var(--r-sm)', textAlign: 'center', fontSize: 12, color: '#059669', fontWeight: 600 }}>
           ✓ Action Completed
         </div>
       )}
