@@ -7,14 +7,19 @@ import User from './models/User.js';
 import Restaurant from './models/Restaurant.js';
 import Dish from './models/Dish.js';
 import Review from './models/Review.js';
+import Booking from './models/Booking.js';
+import Event from './models/Event.js';
+import EventBooking from './models/EventBooking.js';
 import Post from './models/Post.js';
 import Comment from './models/Comment.js';
 import Vote from './models/Vote.js';
 import Report from './models/Report.js';
+import Notification from './models/Notification.js';
 import Favorite from './models/Favorite.js';
 import SavedOrder from './models/SavedOrder.js';
-import Event from './models/Event.js';
-import EventBooking from './models/EventBooking.js';
+import VerificationRequest from './models/VerificationRequest.js';
+import Payment from './models/Payment.js';
+import ChatbotRule from './models/ChatbotRule.js';
 
 const hash = (pw) => bcryptjs.hash(pw, 10);
 
@@ -25,6 +30,7 @@ function daysFromNow(n) {
 }
 function daysAgo(n) { return daysFromNow(-n); }
 function nextWeekday(day) {
+  // day: 0=Sun,1=Mon,...,5=Fri,6=Sat
   const d = new Date();
   const diff = (day - d.getDay() + 7) % 7 || 7;
   d.setDate(d.getDate() + diff);
@@ -36,11 +42,9 @@ async function seed() {
   console.log('Connected to MongoDB');
 
   // ── Drop all collections ──────────────────────────────────────────────────
-  const collections = [
-    'users','restaurants','dishes','reviews',
-    'posts','comments','votes','reports',
-    'favorites','savedorders','events','eventbookings'
-  ];
+  const collections = ['users','restaurants','dishes','reviews','bookings','events',
+    'eventbookings','posts','comments','votes','reports','notifications',
+    'favorites','savedorders','verificationrequests','payments','chatbotrules'];
   for (const col of collections) {
     try { await mongoose.connection.dropCollection(col); } catch { /* didn't exist */ }
   }
@@ -216,6 +220,18 @@ async function seed() {
       tags: ['Seafood','Bengali','Fresh Catch','New']
     }
   ]);
+  console.log('Restaurants created');
+
+  // ── Verification Request for Blue Ocean ──────────────────────────────────
+  await VerificationRequest.create({
+    ownerId: amir._id, restaurantId: r8._id,
+    status: 'pending',
+    documents: [
+      'https://res.cloudinary.com/demo/image/upload/v1/docs/trade_license.pdf',
+      'https://res.cloudinary.com/demo/image/upload/v1/docs/nid_copy.pdf'
+    ],
+    submissionDate: daysAgo(2)
+  });
 
   // ── Dishes ────────────────────────────────────────────────────────────────
   const dishMap = {}; // restaurantName -> { dishName -> dish }
@@ -305,6 +321,75 @@ async function seed() {
   ]);
   console.log(`${allDishes.length} dishes created`);
 
+  // Helper: get dish by name from allDishes
+  const d = (name) => allDishes.find(x => x.name === name);
+
+  // Helper: build dishReviews entries
+  // dr(['Dish Name', rating, 'optional short comment'], ...)
+  const dr = (...pairs) => pairs
+    .map(([name, rating, comment]) => ({ dishId: d(name)?._id, rating, comment: comment || undefined }))
+    .filter(x => x.dishId);
+
+  // ── Bookings (completed → verifiedVisit on reviews) ───────────────────────
+  const bookingAhmedKacchi = await Booking.create({
+    userId:r1._id, restaurantId:r1._id,  // will fix below — placeholder
+    bookingDate: daysAgo(14), time:'19:00', partySize:4,
+    status:'completed', guestName:'Ahmed Hassan', guestEmail:'ahmed@foodtabs.com', guestPhone:'01711111111', confirmationCode:'BK-AHMED-KACCHI-001'
+  });
+  // Fix userId — re-create properly
+  await Booking.findByIdAndDelete(bookingAhmedKacchi._id);
+
+  const [bAhmedKacchi, bAhmedGulshan, bRinaKacchi, bJasimKacchi, bNadiaBella,
+         bAhmedMezban, bMituHealthy, bFarhanSakura, bRinaEvent, bKabirEvent] = await Booking.insertMany([
+    { userId:ahmed._id,  restaurantId:r1._id, bookingDate:daysAgo(14), time:'19:00', partySize:4, status:'completed', guestName:'Ahmed Hassan', guestEmail:'ahmed@foodtabs.com', guestPhone:'01711111111', confirmationCode:'BK-AHMED-KACCHI-001' },
+    { userId:ahmed._id,  restaurantId:r2._id, bookingDate:daysAgo(21), time:'20:00', partySize:2, status:'completed', guestName:'Ahmed Hassan', guestEmail:'ahmed@foodtabs.com', guestPhone:'01711111111', confirmationCode:'BK-AHMED-GULSHAN-001' },
+    { userId:rina._id,   restaurantId:r1._id, bookingDate:daysAgo(30), time:'19:30', partySize:6, status:'completed', guestName:'Rina Akter', guestEmail:'rina@foodtabs.com', guestPhone:'01722222222', confirmationCode:'BK-RINA-KACCHI-001'  },
+    { userId:jasim._id,  restaurantId:r1._id, bookingDate:daysAgo(35), time:'20:00', partySize:3, status:'completed', guestName:'Jasim Uddin', guestEmail:'jasim@foodtabs.com', guestPhone:'01733333333', confirmationCode:'BK-JASIM-KACCHI-001' },
+    { userId:nadia._id,  restaurantId:r5._id, bookingDate:daysAgo(14), time:'19:00', partySize:2, status:'completed', guestName:'Nadia Islam', guestEmail:'nadia@foodtabs.com', guestPhone:'01744444444', confirmationCode:'BK-NADIA-BELLA-001'  },
+    { userId:ahmed._id,  restaurantId:r6._id, bookingDate:daysFromNow(3), time:'19:00', partySize:4, status:'confirmed', guestName:'Ahmed Hassan', guestEmail:'ahmed@foodtabs.com', guestPhone:'01711111111', confirmationCode:'BK-AHMED-MEZBAN-001' },
+    { userId:mitu._id,   restaurantId:r7._id, bookingDate:daysFromNow(1), time:'19:00', partySize:2, status:'confirmed', guestName:'Mitu Chowdhury', guestEmail:'mitu@foodtabs.com', guestPhone:'01755555555', confirmationCode:'BK-MITU-HEALTHY-001' },
+    { userId:farhan._id, restaurantId:r4._id, bookingDate:daysAgo(7),  time:'19:30', partySize:2, status:'cancelled', guestName:'Farhan Kabir', guestEmail:'farhan@foodtabs.com', guestPhone:'01766666666', confirmationCode:'BK-FARHAN-SAKURA-001'},
+    { userId:rina._id,   restaurantId:r1._id, bookingDate:daysAgo(10), time:'19:00', partySize:1, status:'completed', guestName:'Rina Akter', guestEmail:'rina@foodtabs.com', guestPhone:'01722222222', confirmationCode:'BK-RINA-EVENT-001'   },
+    { userId:kabir._id,  restaurantId:r2._id, bookingDate:daysFromNow(5), time:'20:00', partySize:1, status:'confirmed', guestName:'Kabir Mahmud', guestEmail:'kabir@foodtabs.com', guestPhone:'01777777777', confirmationCode:'BK-KABIR-EVENT-001' },
+  ]);
+  console.log('Bookings created');
+
+  // ── Events ────────────────────────────────────────────────────────────────
+  const [evKacchi, evGulshan, evSakura] = await Event.insertMany([
+    {
+      restaurantId: r1._id,
+      name: 'Eid Special Dawat',
+      description: 'A special Eid celebration menu featuring our legendary Kacchi, Rezala, Borhani, and a three-dessert finale. Traditional setting, festive atmosphere.',
+      eventDate: daysFromNow(10), eventTime: '19:00',
+      price: 1500, capacity: 30, seatsBooked: 22, isActive: true
+    },
+    {
+      restaurantId: r2._id,
+      name: 'Friday Night BBQ',
+      description: 'Live charcoal grilling, unlimited sides, a DJ set, and the best meats in Dhaka. Adults only.',
+      eventDate: nextWeekday(5), eventTime: '20:00',
+      price: 2500, capacity: 40, seatsBooked: 38, isActive: true
+    },
+    {
+      restaurantId: r4._id,
+      name: 'Omakase Evening',
+      description: 'A 9-course omakase experience curated by our head chef. Seasonal ingredients, sake pairing available. Maximum 12 guests.',
+      eventDate: daysFromNow(21), eventTime: '19:30',
+      price: 4500, capacity: 12, seatsBooked: 4, isActive: true
+    }
+  ]);
+  console.log('Events created');
+
+  // Event bookings (seats purchased)
+  await EventBooking.insertMany([
+    { userId:rina._id,  restaurantId:r1._id, eventName:'Eid Special Dawat', eventType:'Special Event',
+      eventDate:evKacchi.eventDate, eventTime:'19:00', duration:180, guestCount:1,
+      estimatedBudget:1500, status:'confirmed', confirmationCode:'EV-RINA-EID-001' },
+    { userId:kabir._id, restaurantId:r2._id, eventName:'Friday Night BBQ',  eventType:'Special Event',
+      eventDate:evGulshan.eventDate, eventTime:'20:00', duration:240, guestCount:1,
+      estimatedBudget:2500, status:'confirmed', confirmationCode:'EV-KABIR-BBQ-001' },
+  ]);
+
   // ── Reviews ───────────────────────────────────────────────────────────────
   // Helper to build review
   const rev = (userId, restaurantId, opts={}) => ({
@@ -328,19 +413,19 @@ async function seed() {
 
   const reviews = await Review.insertMany([
     // ── Star Kacchi House (r1) ──────────────────────────────────────────────
-    rev(rina._id,  r1._id, { title:'Kacchi that hits different every single time', rating:5,
+    rev(rina._id,  r1._id, { title:'Kacchi that hits different every single time', rating:5, verified:true,
       ratings:{taste:5,hygiene:4,service:3,ambience:3,value:5}, likeCount:18,
       dishReviews:dr(['Kacchi Biriyani (Beef)',5,'Tender and fragrant, falling off the bone'],['Borhani',5,'Freshly churned, perfectly tangy']),
       content:"Kacchi biriyani is literally my comfort food and this place never disappoints. Came for my cousin's dawat and ordered for 8 people. The meat was so tender it was falling off the bone. Rice was perfectly spiced, not too oily. Borhani was fresh and tangy. Service was a bit slow — we waited almost 40 minutes but I think it was because it was a Friday evening and the place was packed. Ambience is simple, nothing fancy, but for the food quality the price is very fair. Taste 5/5 all day. Will keep coming back." }),
-    rev(rina._id,  r1._id, { title:'Firni review', rating:5,
+    rev(rina._id,  r1._id, { title:'Firni review', rating:5, verified:true,
       ratings:{taste:5,hygiene:4,service:4,ambience:3,value:5},
       dishReviews:dr(['Firni',5,'Cold, smooth, perfectly sweetened — served in clay pots']),
       content:'The firni here is served in clay pots and it is cold, smooth, and perfectly sweetened. Nothing like the versions you get at other places. A must-order.' }),
-    rev(ahmed._id, r1._id, { title:'Best kacchi in Dhanmondi, no contest', rating:5,
+    rev(ahmed._id, r1._id, { title:'Best kacchi in Dhanmondi, no contest', rating:5, verified:true,
       ratings:{taste:5,hygiene:4,service:4,ambience:3,value:5}, likeCount:12,
       dishReviews:dr(['Kacchi Biriyani (Beef)',5,'Never dropped in 8 years'],['Borhani',5,'Freshly churned, tangy in exactly the right way'],['Naan',4,'Soft, pulled apart perfectly']),
       content:"Been coming here for 8 years and the quality has never dropped. Ordered the beef kacchi with borhani — the borhani was freshly churned and tangy in exactly the right way. The naan was soft and pulled apart perfectly. Slight wait at the counter but that is expected on a weekend. For this price point there is truly nothing better in the area." }),
-    rev(jasim._id, r1._id, { title:'A Dhaka institution, period', rating:5,
+    rev(jasim._id, r1._id, { title:'A Dhaka institution, period', rating:5, verified:true,
       ratings:{taste:5,hygiene:4,service:4,ambience:4,value:5}, likeCount:22,
       dishReviews:dr(['Kacchi Biriyani (Mutton)',5,'Fat renders into the rice beautifully'],['Roasted Leg Piece',5,'Incredibly juicy'],['Shahi Tukra',4,'Properly soaked, not too sweet']),
       content:"Third time this month and I regret nothing. The mutton kacchi is slightly better than the beef in my opinion — the fat renders into the rice beautifully. Roasted leg piece was incredibly juicy. Shahi tukra to finish — properly soaked, not too sweet. The place has character, the kind you cannot manufacture." }),
@@ -379,19 +464,19 @@ async function seed() {
     rev(farhan._id,r1._id, { title:'The firni redeems everything', rating:3,
       dishReviews:dr(['Firni',5,'Perfectly chilled, light, not overly sweet']),
       content:"Food is fine but nothing exceptional to me. The firni in clay pots is genuinely special though — perfectly chilled, light, and not overly sweet. That one item I would come back for specifically." }),
-    rev(ahmed._id, r1._id, { title:'Catering order was perfect', rating:5,
+    rev(ahmed._id, r1._id, { title:'Catering order was perfect', rating:5, verified:true,
       dishReviews:dr(['Kacchi Biriyani (Beef)',5,'Every single person at the event praised it']),
       content:"Ordered for a family event of 20 people. They handled it smoothly, food arrived on time and was still warm. Every single person praised the biriyani. The confirmation process was easy and the staff were responsive on the phone." }),
-    rev(rina._id,  r1._id, { title:'Roasted leg piece is underrated', rating:5,
+    rev(rina._id,  r1._id, { title:'Roasted leg piece is underrated', rating:5, verified:true,
       dishReviews:dr(['Roasted Leg Piece',5,'Deeply spiced, crispy skin, juicy inside — criminal value at 350 taka']),
       content:"Everyone talks about the kacchi but the roasted leg piece is secretly the best item here. Deeply spiced, crispy skin, juicy inside. 350 taka for a whole leg. Absolutely criminal value." }),
 
     // ── Gulshan Grill (r2) ─────────────────────────────────────────────────
-    rev(ahmed._id, r2._id, { title:'Premium done right — worth every taka', rating:5,
+    rev(ahmed._id, r2._id, { title:'Premium done right — worth every taka', rating:5, verified:true,
       ratings:{taste:5,hygiene:5,service:5,ambience:5,value:4}, likeCount:20,
       dishReviews:dr(['Ribeye Steak 300g',5,'Cooked perfectly medium rare, beautifully charred'],['Mixed Grill Platter',5,'Worth every taka sharing between two'],['Garlic Bread',5,'Incredible from the wood-fired oven'],['Chocolate Lava Cake',5,'A 10/10 ending']),
       content:"This place is premium and you feel it the moment you walk in. Came for a work dinner. The ribeye was cooked perfectly medium rare, beautifully charred outside. The mixed grill platter is worth every taka if you are sharing between two. Service was excellent — our waiter knew the menu really well and suggested the garlic bread which was incredible. Slightly expensive but completely justified for the quality and setting. The chocolate lava cake was a 10/10 ending." }),
-    rev(nadia._id, r2._id, { title:'Best steak in Dhaka by far', rating:5,
+    rev(nadia._id, r2._id, { title:'Best steak in Dhaka by far', rating:5, verified:true,
       ratings:{taste:5,hygiene:5,service:5,ambience:5,value:4},
       dishReviews:dr(['Ribeye Steak 300g',5,'Proper charcoal grill marks, cooked exactly as requested'],['Caesar Salad',5,'Fresh dressing made in house']),
       content:"The ribeye here is hands down the best I have had in Dhaka. Proper charcoal grill marks, seasoned well, cooked exactly as requested. The Caesar salad is fresh and the dressing is made in house. The outdoor seating area in the evening is beautiful — fairy lights and the smell of charcoal. Expensive but it is a proper fine dining experience." }),
@@ -430,10 +515,10 @@ async function seed() {
     rev(jasim._id, r2._id, { title:'BBQ chicken is criminally underrated here', rating:5,
       dishReviews:dr(['BBQ Chicken Half',5,'750 taka for perfection — best value on the menu']),
       content:"Everyone talks about the steak but the BBQ chicken half is seriously exceptional. 750 taka for a perfectly grilled half chicken with that char and marinade? That is the best value item on the menu. Do not sleep on it." }),
-    rev(ahmed._id, r2._id, { title:'Lemon Fresh is elite', rating:4,
+    rev(ahmed._id, r2._id, { title:'Lemon Fresh is elite', rating:4, verified:true,
       dishReviews:dr(['Fresh Lemonade',5,'Ginger, mint, lemon perfectly balanced — best value at 180 taka']),
       content:"Small note but the fresh lemonade here is extraordinary. Ginger, mint, and lemon perfectly balanced. It is the palate cleanser you need between heavy grill courses. And at 180 taka it is one of the best value items on the menu." }),
-    rev(nadia._id, r2._id, { title:'Mango sorbet is seasonal perfection', rating:4,
+    rev(nadia._id, r2._id, { title:'Mango sorbet is seasonal perfection', rating:4, verified:true,
       dishReviews:dr(['Mango Sorbet',5,'Pure clean mango with a hint of tartness']),
       content:"The mango sorbet is genuinely one of the best desserts I have had in Dhaka. Pure, clean mango flavour with a hint of tartness. If they offered this year-round I would come just for it." }),
     rev(rina._id,  r2._id, { title:'Caesar salad: actually good', rating:4,
@@ -549,7 +634,7 @@ async function seed() {
       content:"Had to cancel our reservation due to illness. The refund was processed within 5 days as promised and the staff were gracious about it. Good to know the booking system works properly even in the negative scenario." }),
 
     // ── Bella Napoli (r5) ──────────────────────────────────────────────────
-    rev(nadia._id, r5._id, { title:"Dhaka's best Italian, no debate", rating:5,
+    rev(nadia._id, r5._id, { title:"Dhaka's best Italian, no debate", rating:5, verified:true,
       ratings:{taste:5,hygiene:5,service:5,ambience:5,value:4}, likeCount:16,
       dishReviews:dr(['Margherita Pizza',5,'Simple, clean, charred correctly at the edges'],['Spaghetti Carbonara',5,'Guanciale and egg yolk — proper technique'],['Tiramisu',5,'House-made and it shows']),
       content:"The wood-fired Neapolitan pizza here is the real deal. The margherita is perfect — simple, clean, charred correctly at the edges. The carbonara is made properly with guanciale and egg yolk, not cream. This is how Italian food should be cooked. The tiramisu is house-made and it shows. Slightly pricey but the imported ingredients justify it." }),
@@ -591,7 +676,7 @@ async function seed() {
     rev(farhan._id,r5._id, { title:'Wood-fired crust is genuinely excellent', rating:4,
       dishReviews:dr(['Margherita Pizza',4,'Best wood-fired crust in Dhaka — leopard spots, slight chew']),
       content:"Whatever my complaints about the price, the wood-fired crust on the pizza is excellent. Charred correctly, leopard spots where the air pockets blistered, slight chew in the centre. If you are a pizza person this is the best crust in Dhaka." }),
-    rev(nadia._id, r5._id, { title:'Second visit even better than first', rating:5,
+    rev(nadia._id, r5._id, { title:'Second visit even better than first', rating:5, verified:true,
       dishReviews:dr(['Spaghetti Carbonara',5,'Just as good as the first time — consistency is everything'],['Tiramisu',5,'Even better second visit — distinguishes genuine quality']),
       content:"Came back three weeks later and the consistency is what impressed me. The carbonara was just as good as the first time. The tiramisu was better — perhaps a new batch of Mascarpone. This is what distinguishes genuine quality from a lucky first visit." }),
     rev(ahmed._id, r5._id, { title:'The bruschetta starter is essential', rating:4,
@@ -708,6 +793,7 @@ async function seed() {
       content:"Quinoa salad in Dhaka usually means a sad bowl of boring grain. Here it is tri-colour quinoa, herbs, and a genuinely excellent lemon vinaigrette. You can taste the care in the recipe. 420 taka for a salad is a lot but this is premium ingredient territory." }),
   ]);
   console.log(`${reviews.length} reviews created`);
+
 
   // ── Owner responses on reviews ───────────────────────────────────────────
   // Rahim (Star Kacchi) responds to Farhan's critical review and Kabir's review
@@ -1132,41 +1218,68 @@ async function seed() {
   ]);
   console.log('Reports created');
 
-  // ── Events ────────────────────────────────────────────────────────────────
-  const [evKacchi, evGulshan, evSakura] = await Event.insertMany([
-    {
-      restaurantId: r1._id,
-      name: 'Eid Special Dawat',
-      description: 'A special Eid celebration menu featuring our legendary Kacchi, Rezala, Borhani, and a three-dessert finale. Traditional setting, festive atmosphere.',
-      eventDate: daysFromNow(10), eventTime: '19:00',
-      price: 1500, capacity: 30, seatsBooked: 22, isActive: true
-    },
-    {
-      restaurantId: r2._id,
-      name: 'Friday Night BBQ',
-      description: 'Live charcoal grilling, unlimited sides, a DJ set, and the best meats in Dhaka. Adults only.',
-      eventDate: nextWeekday(5), eventTime: '20:00',
-      price: 2500, capacity: 40, seatsBooked: 38, isActive: true
-    },
-    {
-      restaurantId: r4._id,
-      name: 'Omakase Evening',
-      description: 'A 9-course omakase experience curated by our head chef. Seasonal ingredients, sake pairing available. Maximum 12 guests.',
-      eventDate: daysFromNow(21), eventTime: '19:30',
-      price: 4500, capacity: 12, seatsBooked: 4, isActive: true
-    }
+  // ── Chatbot Rules ─────────────────────────────────────────────────────────
+  await ChatbotRule.insertMany([
+    { triggers:['verified','badge','verified visit','how to get verified'], response:"Your review gets a Verified Visit badge automatically when you have completed a booking at that restaurant through our platform. No action needed — the system checks your booking history and adds the badge when you submit the review." },
+    { triggers:['reserve','reservation','book a table','table booking'], response:"To reserve a table, open any restaurant profile and tap the Reserve a Table button. Select your date, choose an available time slot, enter your party size, and complete the payment. You will receive a confirmation immediately." },
+    { triggers:['cancel','cancellation','cancel booking','refund'], response:"You can cancel a booking from My Bookings in your profile. If you cancel more than 24 hours before your reservation you will receive a full refund. Cancellations within 24 hours are non-refundable. Refunds may take 5 to 7 business days." },
+    { triggers:['event','special event','book event','event booking'], response:"Restaurants host special events like tasting nights and themed dinners. You can find upcoming events on each restaurant's profile page under the Events section. Tap Book Seats, select how many you need, and complete payment through Stripe." },
+    { triggers:['review','write a review','how to review','leave review'], response:"To write a review, visit the restaurant's profile page and click Write a Review. You can rate individual dishes, score the restaurant across five criteria (Taste, Hygiene, Service, Ambience, Value), and upload photos." },
+    { triggers:['fake review','report','flag','suspicious review'], response:"You can report any review, post, or comment by tapping the Report button on that content. Select the reason and our moderation team will review it within 24 hours." },
+    { triggers:['list restaurant','add restaurant','owner','register restaurant','vendor'], response:"To list your restaurant on Food Tabs, tap List Your Restaurant on the homepage. Upload your trade license, NID, and restaurant photos. Our team reviews all applications and you will hear back within 48 hours." },
+    { triggers:['payment','pay','stripe','card'], response:"We use Stripe for secure payments. Your card details are never stored on our servers. For testing use card number 4242 4242 4242 4242 with any future expiry and any 3-digit CVV." },
+    { triggers:['recommendation','suggest','what to try','personalized'], response:"Your homepage feed is personalized based on your review history, bookmarks, and cuisine preferences. Update your cuisine preferences in your Profile Settings." },
+    { triggers:['forum','community','post','discussion'], response:"The Community tab is our forum where food lovers discuss the best places in Dhaka. Post in categories like Best in City, Hidden Gems, Ask the Community, and more." },
+    { triggers:['account','sign up','register','login','password'], response:"Create a free account by tapping Sign Up. Forgot your password? Use the Forgot Password link on the login page to reset it via email." },
+    { triggers:['contact','help','support','problem','issue'], response:"For unresolved issues, use the Report button on any content or email support@foodtabs.com. We aim to respond within 24 hours on business days." },
+    { triggers:['best dish','what to order','recommend dish','what should i get'], response:"Open any restaurant profile and look at the dish ratings — each dish has its own star rating from customers who specifically reviewed it. The most reviewed dishes appear first. You can also filter the reviews section by dish name to read what people said about a specific item." },
+    { triggers:['dish review','review a dish','rate a dish'], response:"When you write a review, you select which dishes you had and rate each one individually. This creates a dish-specific rating that other customers can see when browsing the menu. Dish selection is the first step of the review form." },
+    { triggers:['search dish','find dish','look up dish'], response:"You can search for specific dishes from the main search bar. Dish results appear below restaurant results and show the dish rating and number of reviews from customers who ordered it. Try searching the dish name along with an area, like 'kacchi biriyani Dhanmondi'." },
   ]);
-  console.log('Events created');
+  console.log('Chatbot rules created');
 
-  // Event bookings (seats purchased)
-  await EventBooking.insertMany([
-    { userId:rina._id,  restaurantId:r1._id, eventName:'Eid Special Dawat', eventType:'Special Event',
-      eventDate:evKacchi.eventDate, eventTime:'19:00', duration:180, guestCount:1,
-      estimatedBudget:1500, status:'confirmed', confirmationCode:'EV-RINA-EID-001' },
-    { userId:kabir._id, restaurantId:r2._id, eventName:'Friday Night BBQ',  eventType:'Special Event',
-      eventDate:evGulshan.eventDate, eventTime:'20:00', duration:240, guestCount:1,
-      estimatedBudget:2500, status:'confirmed', confirmationCode:'EV-KABIR-BBQ-001' },
+  // ── Payments (demo) ──────────────────────────────────────────────────────
+  const [payAhmedKacchi, payAhmedGulshan, payRinaKacchi, payJasimKacchi, payNadiaBella, payKabirUpcoming] =
+    await Payment.insertMany([
+      { userId:ahmed._id, bookingId:bAhmedKacchi._id,  amount:200, currency:'BDT', status:'succeeded', paymentMethod:'demo card ending 4242' },
+      { userId:ahmed._id, bookingId:bAhmedGulshan._id, amount:500, currency:'BDT', status:'succeeded', paymentMethod:'demo card ending 4242' },
+      { userId:rina._id,  bookingId:bRinaKacchi._id,   amount:200, currency:'BDT', status:'succeeded', paymentMethod:'demo card ending 4242' },
+      { userId:jasim._id, bookingId:bJasimKacchi._id,  amount:200, currency:'BDT', status:'succeeded', paymentMethod:'demo card ending 4242' },
+      { userId:nadia._id, bookingId:bNadiaBella._id,   amount:250, currency:'BDT', status:'succeeded', paymentMethod:'demo card ending 4242' },
+      { userId:kabir._id, bookingId:bKabirEvent._id,   amount:500, currency:'BDT', status:'succeeded', paymentMethod:'demo card ending 4242' },
+    ]);
+  await Promise.all([
+    Booking.findByIdAndUpdate(bAhmedKacchi._id,  { paymentId: payAhmedKacchi._id }),
+    Booking.findByIdAndUpdate(bAhmedGulshan._id, { paymentId: payAhmedGulshan._id }),
+    Booking.findByIdAndUpdate(bRinaKacchi._id,   { paymentId: payRinaKacchi._id }),
+    Booking.findByIdAndUpdate(bJasimKacchi._id,  { paymentId: payJasimKacchi._id }),
+    Booking.findByIdAndUpdate(bNadiaBella._id,   { paymentId: payNadiaBella._id }),
+    Booking.findByIdAndUpdate(bKabirEvent._id,   { paymentId: payKabirUpcoming._id }),
   ]);
+  console.log('Payments created and wired to bookings');
+
+  // ── Notifications ─────────────────────────────────────────────────────────
+  await Notification.insertMany([
+    { userId:ahmed._id,  type:'booking_update',  title:'Booking confirmed at Mezban Street Kitchen', content:'Your reservation for 4 guests has been confirmed.', link:'/bookings', isRead:false },
+    { userId:ahmed._id,  type:'booking_update',  title:'Payment received - Gulshan Grill', content:'Deposit of BDT 500 paid. Your reservation is confirmed.', link:'/bookings', isRead:true },
+    { userId:ahmed._id,  type:'review_response', title:'Owner replied to your review', content:'The owner of Star Kacchi House replied to your review.', link:'/bookings', isRead:true },
+    { userId:rina._id,   type:'review_response', title:'Owner replied to your review at Star Kacchi House', content:'Thank you for your honest feedback. We hear your concerns about hygiene...', link:'/bookings', isRead:false },
+    { userId:rina._id,   type:'booking_update',  title:'Payment received - Star Kacchi House', content:'Deposit of BDT 200 paid. Your table booking is confirmed.', link:'/bookings', isRead:true },
+    { userId:nadia._id,  type:'booking_update',  title:'Payment received - Bella Napoli', content:'Deposit of BDT 250 paid. Your reservation is confirmed.', link:'/bookings', isRead:false },
+    { userId:kabir._id,  type:'booking_update',  title:'Payment received - Gulshan Grill', content:'Deposit of BDT 500 paid. Your upcoming booking is confirmed.', link:'/bookings', isRead:false },
+    { userId:priya._id,  type:'booking_update',  title:'Welcome to Food Tabs!', content:'Tell us your cuisine preferences to get personalized recommendations.', link:'/profile', isRead:false },
+    { userId:rahim._id,  type:'new_review',   title:'New 5-star review on Star Kacchi House', content:'Ahmed Hassan: "Best kacchi in Dhanmondi, no contest"', link:'/owner/reviews', isRead:false },
+    { userId:rahim._id,  type:'new_review',   title:'New 3-star review on Star Kacchi House', content:'Farhan Kabir: "Honestly overrated in my opinion"', link:'/owner/reviews', isRead:true },
+    { userId:rahim._id,  type:'new_booking',  title:'New reservation - 4 guests', content:'Ahmed Hassan booked for 4 guests. Deposit BDT 200 received.', link:'/owner/bookings', isRead:true },
+    { userId:rahim._id,  type:'new_booking',  title:'New reservation - 6 guests', content:'Rina Akter booked for 6 guests. Deposit BDT 200 received.', link:'/owner/bookings', isRead:true },
+    { userId:sumaiya._id,type:'new_review',   title:'New review on Gulshan Grill and Co', content:'A customer left a new review. Tap to read and respond.', link:'/owner/reviews', isRead:false },
+    { userId:sumaiya._id,type:'new_booking',  title:'New reservation - Gulshan Grill', content:'Ahmed Hassan booked for 2 guests. Deposit BDT 500 received.', link:'/owner/bookings', isRead:false },
+    { userId:sumaiya._id,type:'new_booking',  title:'New reservation - Gulshan Grill', content:'Kabir Mahmud booked a table. Deposit BDT 500 received.', link:'/owner/bookings', isRead:true },
+    { userId:tariq._id,  type:'new_review',   title:'New review on Puran Dhaka Bhojon', content:'A customer left a 5-star review. Tap to read and respond.', link:'/owner/reviews', isRead:false },
+    { userId:admin._id,  type:'new_booking',  title:'Vendor application: Blue Ocean Seafood', content:'Blue Ocean Seafood has submitted documents for verification.', link:'/admin/dashboard', isRead:false },
+    { userId:admin._id,  type:'new_review',   title:'2 reports pending moderation', content:'2 flagged items are in the moderation queue.', link:'/admin/dashboard', isRead:false },
+  ]);
+  console.log('Notifications created');
 
   // ── Favorites ─────────────────────────────────────────────────────────────
   await Favorite.insertMany([
@@ -1208,27 +1321,77 @@ async function seed() {
   ]);
   console.log('Favorites and saved orders created');
 
-  console.log('Favorites and saved orders created');
-
   // ── Print summary ─────────────────────────────────────────────────────────
   console.log(`
 ========================================
-FOOD TABS — SEED S3 COMPLETE
-Sprint 3: Discovery — Recommendations, Favorites, Saved Orders, Event Booking
+FOOD TABS — SEED COMPLETE
 ========================================
 
 TEST ACCOUNTS:
 
-ADMIN   admin@foodtabs.com    Admin@1234
-OWNERS  [owner]@foodtabs.com  Owner@1234
-CUSTOMERS [name]@foodtabs.com Customer@1234
+ADMIN
+  Email:    admin@foodtabs.com
+  Password: Admin@1234
 
-WHAT YOU CAN TEST:
-  Events            — Eid Special Dawat (Star Kacchi), Friday Night BBQ (Gulshan), Omakase Evening (Sakura)
-  Event booking     — try booking the Friday Night BBQ (only 2 seats left)
-  Favorites         — log in as rakib or ahmed, check saved restaurants
-  Saved orders      — log in as rakib (My Usual Friday Night) or ahmed (Date Night)
-  Forum + community — all Sprint 2 features still active
+OWNERS (8 dedicated restaurant owners)
+  Rahim Uddin (Star Kacchi House)
+  Email:    rahim@foodtabs.com
+  Password: Owner@1234
+
+  Sumaiya Begum (Gulshan Grill and Co)
+  Email:    sumaiya@foodtabs.com
+  Password: Owner@1234
+
+  Tariq Hossain (Puran Dhaka Bhojon)
+  Email:    tariq@foodtabs.com
+  Password: Owner@1234
+
+  Kenji Nakamura (Sakura Japanese Kitchen)
+  Email:    kenji@foodtabs.com
+  Password: Owner@1234
+
+  Lorenzo Romano (Bella Napoli)
+  Email:    lorenzo@foodtabs.com
+  Password: Owner@1234
+
+  Mizanur Rahman (Mezban Street Kitchen)
+  Email:    mizanur@foodtabs.com
+  Password: Owner@1234
+
+  Dr. Sara Ahmed (The Healthy Bowl)
+  Email:    sara@foodtabs.com
+  Password: Owner@1234
+
+  Amir Hassan (Blue Ocean Seafood)
+  Email:    amir@foodtabs.com
+  Password: Owner@1234
+
+CUSTOMERS
+  Ahmed   ahmed@foodtabs.com   Customer@1234  (verified reviews, upcoming booking)
+  Nadia   nadia@foodtabs.com   Customer@1234  (verified review at Bella Napoli)
+  Rina    rina@foodtabs.com    Customer@1234  (most detailed reviews, verified)
+  Farhan  farhan@foodtabs.com  Customer@1234  (no bookings, unverified reviews)
+  Mitu    mitu@foodtabs.com    Customer@1234  (pending booking, not yet completed)
+  Kabir   kabir@foodtabs.com   Customer@1234  (warned user, warningCount 1)
+  Sonia   sonia@foodtabs.com   Customer@1234  (flagged review in moderation queue)
+  Rakib   rakib@foodtabs.com   Customer@1234  (favorites and saved orders)
+  Priya   priya@foodtabs.com   Customer@1234  (new user, cold start, no history)
+  Jasim   jasim@foodtabs.com   Customer@1234  (high activity, many votes)
+
+WHAT YOU CAN TEST IMMEDIATELY:
+  Owner dashboards    — log in as any owner to manage their restaurant
+  Verified badge      — log in as ahmed, write a review for Star Kacchi House
+  Unverified review   — log in as farhan, write any review
+  Moderation queue    — log in as admin, check the reports queue
+  Vendor approval     — log in as admin, approve Blue Ocean Seafood
+  Event overbooking   — try booking 3 seats for Gulshan Grill Friday Night BBQ (only 2 left)
+  Cold start feed     — log in as priya, see top rated feed with no personalization
+  Chatbot             — ask "how do I get a verified badge" on any page
+  Saved orders        — log in as rakib, view saved orders in profile
+  Forum threading     — open post 14 and reply to the admin comment
+  Upvote toggle       — upvote something, upvote again to remove the vote
+  Cancelled booking   — log in as farhan, check booking history for the refunded booking
+
 ========================================
 `);
 
@@ -1236,4 +1399,7 @@ WHAT YOU CAN TEST:
   process.exit(0);
 }
 
-seed().catch(err => { console.error(err); process.exit(1); });
+seed().catch(err => {
+  console.error('Seed error:', err);
+  process.exit(1);
+});
